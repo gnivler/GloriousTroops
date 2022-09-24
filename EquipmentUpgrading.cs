@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -7,6 +8,7 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.Core;
+using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
 using TaleWorlds.Localization;
 using static UniqueTroopsGoneWild.Globals;
@@ -16,18 +18,16 @@ namespace UniqueTroopsGoneWild
 {
     internal static class EquipmentUpgrading
     {
-        private static readonly string[] BadLoot = { "throwing_stone" };
+        private static readonly string[] BadLoot = { "" };
+        private static readonly List<int> Slots = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
         private static readonly AccessTools.FieldRef<BasicCharacterObject, bool> IsSoldier =
             AccessTools.FieldRefAccess<BasicCharacterObject, bool>("<IsSoldier>k__BackingField");
 
         private static MethodInfo setName;
-        private const int ItemValueThreshold = 1000;
 
         internal static void UpgradeEquipment(PartyBase party, ItemRoster loot)
         {
-            if (party.MemberRoster.GetTroopRoster().AnyQ(tre => tre.Character.Name == null))
-                Debugger.Break();
             var lootedItems = loot.OrderByDescending(i => i.EquipmentElement.ItemValue).ToListQ();
             var usableEquipment = lootedItems.WhereQ(i =>
                     i.EquipmentElement.Item.ItemType
@@ -51,32 +51,46 @@ namespace UniqueTroopsGoneWild
                         or ItemObject.ItemTypeEnum.ChestArmor
                         or ItemObject.ItemTypeEnum.Cape
                         or ItemObject.ItemTypeEnum.HorseHarness
-                    && i.EquipmentElement.ItemValue >= ItemValueThreshold)
+                    && i.EquipmentElement.ItemValue >= Globals.Settings.MinLootValue)
                 .OrderByDescending(i => i.EquipmentElement.ItemValue).ToListQ();
-
             usableEquipment.RemoveAll(e => BadLoot.Contains(e.EquipmentElement.Item.StringId));
             if (!usableEquipment.Any())
                 return;
 
-            // short-circuit to prevent over-stuffing cavalry
-            if (usableEquipment.AllQ(i => i.EquipmentElement.Item.HasHorseComponent)
-                && party.MobileParty.MemberRoster.CountMounted() > party.MobileParty.MemberRoster.TotalManCount / 2)
-                return;
-
             var troops = UpdateTroops(party);
-            if (usableEquipment.Count == 0)
+            if (!usableEquipment.Any())
                 return;
             for (var i = 0; i < troops.Count; i++)
             {
                 var troop = troops[i];
+                if (troop.Character == CharacterObject.PlayerCharacter)
+                    continue;
                 if (!usableEquipment.Any())
                     break;
-                //Log.Debug?.Log($"{troop.Character.Name} {troop.Character.StringId} is up for upgrades.  Current equipment:");
-                //for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
-                //    Log.Debug?.Log($"{index}: {troop.Character.Equipment[index].Item?.Name} {(troop.Character.Equipment[index].Item?.Value is not null ? "$" : "")}{troop.Character.Equipment[index].Item?.Value}");
+                Log.Debug?.Log($"{troop.Character.Name} {troop.Character.StringId} is up for upgrades.");
                 for (var index = 0; index < usableEquipment.Count; index++)
                 {
                     var possibleUpgrade = usableEquipment[index];
+                    // bail-out clauses
+                    // bandits will loot anything
+                    if (Globals.Settings.MaintainCulture
+                        && troop.Character.Occupation is not Occupation.Bandit
+                        && possibleUpgrade.EquipmentElement.Item.Culture != troop.Character.Culture
+                        && possibleUpgrade.EquipmentElement.Item.Culture != CampaignData.NeutralFaction.Culture)
+                        continue;
+                    if (!Globals.Settings.Mounts && (possibleUpgrade.EquipmentElement.Item.HasHorseComponent || possibleUpgrade.EquipmentElement.Item.HasSaddleComponent))
+                        continue;
+                    if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Crossbow))
+                        continue;
+                    // prevent them from getting a bunch of the same item
+                    if (troop.Character.Equipment.Contains(possibleUpgrade.EquipmentElement))
+                        continue;
+                    // if it's a horse slot but we already have enough, skip to next upgrade EquipmentElement
+                    if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && party.MemberRoster.CountMounted() > party.MemberRoster.TotalManCount / 2)
+                        continue;
+                    // don't take items we can't use
+                    if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
+                        continue;
                     var upgradeValue = possibleUpgrade.EquipmentElement.ItemValue;
                     if (upgradeValue <= LeastValuableItem(troop.Character))
                         break;
@@ -86,12 +100,10 @@ namespace UniqueTroopsGoneWild
                         or ItemObject.ItemTypeEnum.Bolts
                         or ItemObject.ItemTypeEnum.Bullets)
                         continue;
-                    // prevent them from getting a bunch of the same item
-                    if (troop.Character.Equipment.Contains(possibleUpgrade.EquipmentElement))
-                        continue;
-
-                    //Log.Debug?.Log($"{troop.HeroObject?.Name.ToString() ?? troop.Name.ToString()} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, worth {possibleUpgrade.EquipmentElement.ItemValue}");
-                    // TODO sanity check equipment - bows swapping in for melee weapons, others?
+                    Log.Debug?.Log("Current equipment:");
+                    for (var eqIndex = 0; eqIndex < Equipment.EquipmentSlotLength; eqIndex++)
+                        Log.Debug?.Log($"{eqIndex}: {troop.Character.Equipment[eqIndex].Item?.Name} {(troop.Character.Equipment[eqIndex].Item?.Value is not null ? "$" : "")}{troop.Character.Equipment[eqIndex].Item?.Value}");
+                    Log.Debug?.Log($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, worth {possibleUpgrade.EquipmentElement.ItemValue} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
                     var rangedSlot = -1;
                     // assume that sane builds are coming in (no double bows, missing ammo)
                     if (possibleUpgrade.EquipmentElement.Item.HasWeaponComponent)
@@ -115,11 +127,8 @@ namespace UniqueTroopsGoneWild
                                     break;
                                 }
 
-                            // should never be true, but just in case
-                            if (rangedSlot < 0)
-                                continue;
                             // weapon is an upgrade so take it and take the ammo
-                            if (DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, ref troops, rangedSlot))
+                            if (DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, rangedSlot))
                             {
                                 var ammo = GetAmmo(possibleUpgrade, usableEquipment);
                                 if (ammo.IsEmpty)
@@ -131,26 +140,20 @@ namespace UniqueTroopsGoneWild
                                         ammoSlot = slot;
 
                                 possibleUpgrade = new ItemRosterElement(ammo.EquipmentElement.Item, 1);
-                                DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, ref troops, ammoSlot);
+                                DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, ammoSlot);
                                 continue;
                             }
                         }
                     }
 
-                    // if it's a horse slot but we already have enough, skip to next upgrade EquipmentElement
-                    if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && party.MemberRoster.CountMounted() > party.MemberRoster.TotalManCount / 2)
-                        continue;
-
-                    var slots = new List<int>();
-                    for (var s = 0; s < Equipment.EquipmentSlotLength; s++)
-                        slots.Add(s);
-                    slots.Shuffle();
+                    Slots.Shuffle();
+                    var slots = new List<int>(Slots);
                     for (; slots.Count > 0; slots.RemoveAt(0))
                     {
                         var slot = slots[0];
                         if (Equipment.IsItemFitsToSlot((EquipmentIndex)slot, possibleUpgrade.EquipmentElement.Item))
                         {
-                            DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, ref troops);
+                            DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment);
                             break;
                         }
                     }
@@ -162,7 +165,9 @@ namespace UniqueTroopsGoneWild
         // ReSharper disable once RedundantAssignment
         private static List<TroopRosterElement> UpdateTroops(PartyBase party)
         {
-            var rosterElements = party.MemberRoster.GetTroopRoster().OrderByDescending(e => e.Character.Level)
+            var rosterElements = party.MemberRoster.GetTroopRoster()
+                .OrderBy(e => e.Character.IsHero)
+                .ThenByDescending(e => e.Character.Level)
                 .ThenByDescending(SumValue).ToListQ();
             if (Globals.Settings.OnlyBandits)
                 rosterElements.RemoveAll(e => e.Character.Occupation is not Occupation.Bandit);
@@ -173,7 +178,6 @@ namespace UniqueTroopsGoneWild
                 var value = 0;
                 for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
                     value += element.Character.Equipment[index].ItemValue;
-
                 return value;
             }
         }
@@ -181,20 +185,29 @@ namespace UniqueTroopsGoneWild
         private static void MapUpgrade(PartyBase party, CharacterObject troop)
         {
             // Heroes keep their equipment without special tracking
-            if (troop.IsHero)
-                return;
-            if (!EquipmentMap.TryGetValue(troop.StringId, out _))
+            try
             {
-                Troops.Add(troop);
-                EquipmentMap.Add(troop.StringId, troop.Equipment);
-                party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
-                // the final troop won't exist any longer due to being replaced earlier
-                if (party.MemberRoster.Contains(troop.OriginalCharacter))
-                    party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
+                if (troop.IsHero)
+                    return;
+                if (!EquipmentMap.TryGetValue(troop.StringId, out _))
+                {
+                    Troops.Add(troop);
+                    EquipmentMap.Add(troop.StringId, troop.Equipment);
+                    party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
+                    // the final troop won't exist any longer due to being replaced earlier
+                    var index = party.MemberRoster.FindIndexOfTroop(troop.OriginalCharacter);
+                    if (party.MemberRoster.GetElementNumber(index) > 0)
+                        party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
+                }
+                else
+                {
+                    EquipmentMap[troop.StringId] = troop.Equipment;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                EquipmentMap[troop.StringId] = troop.Equipment;
+                InformationManager.DisplayMessage(new InformationMessage(ex.ToString()));
+                Log.Debug?.Log(ex);
             }
         }
 
@@ -228,15 +241,13 @@ namespace UniqueTroopsGoneWild
             ItemRosterElement possibleUpgrade,
             ref TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment,
-            ref List<TroopRosterElement> troops,
             int slotOverride = -1)
         {
             // current item where it's the right kind
-            // TODO break to save time if the most valuable loot is less than the least valuable slot that isn't ammo
             var targetSlot = slotOverride < 0 ? GetLowestValueSlotThatFits(troopRosterElement.Character.Equipment, possibleUpgrade) : slotOverride;
             var replacedItem = troopRosterElement.Character.Equipment[targetSlot];
             // every slot is better or the equipment isn't an upgrade
-            if (targetSlot < 0 || troopRosterElement.Character.Equipment.Contains(possibleUpgrade.EquipmentElement) || replacedItem.ItemValue >= possibleUpgrade.EquipmentElement.ItemValue)
+            if (targetSlot < 0 || replacedItem.ItemValue >= possibleUpgrade.EquipmentElement.ItemValue)
                 return false;
             for (var i = 0; i < troopRosterElement.Number; i++)
             {
@@ -250,7 +261,7 @@ namespace UniqueTroopsGoneWild
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
                 // put anything replaced back into the pile
-                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= ItemValueThreshold)
+                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= Globals.Settings.MinLootValue)
                 {
                     //Log.Debug?.Log($"### Returning {replacedItem.Item?.Name} to the bag");
                     var index = usableEquipment.SelectQ(e => e.EquipmentElement.Item).ToListQ().FindIndexQ(replacedItem.Item);

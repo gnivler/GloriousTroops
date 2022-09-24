@@ -31,7 +31,7 @@ namespace UniqueTroopsGoneWild
         {
             public static void Prefix(MapEvent mapEvent, PartyBase winnerParty, ref Dictionary<PartyBase, ItemRoster> lootedItems)
             {
-                if (!mapEvent.HasWinner || !winnerParty.IsMobile || (Globals.Settings.OnlyBandits && !winnerParty.MobileParty.IsBandit))
+                if (!mapEvent.HasWinner || !winnerParty.IsMobile)
                     return;
                 if (LootRecord.TryGetValue(winnerParty, out var equipment))
                 {

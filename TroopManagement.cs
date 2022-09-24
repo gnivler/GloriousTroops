@@ -43,7 +43,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(SellPrisonersAction), "ApplyInternal")]
         public static class SellPrisonersActionApplyInternal
         {
@@ -55,7 +54,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(PrisonerReleaseCampaignBehavior), "ApplyEscapeChanceToExceededPrisoners")]
         public static class PrisonerReleaseCampaignBehaviorApplyEscapeChanceToExceededPrisoners
         {
@@ -68,7 +66,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(PartiesSellPrisonerCampaignBehavior), "DailyTickSettlement")]
         public class PartiesSellPrisonerCampaignBehaviorDailyTickSettlement
         {
@@ -89,7 +86,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(DesertionCampaignBehavior), "PartiesCheckDesertionDueToPartySizeExceedsPaymentRatio")]
         public class DesertionCampaignBehaviorPartiesCheckDesertionDueToPartySizeExceedsPaymentRatio
         {
@@ -106,7 +102,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(TroopRoster), "KillOneManRandomly")]
         public static class LeaveTroopsToSettlementActionApplyInternal
         {
@@ -123,7 +118,6 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
         [HarmonyPatch(typeof(MobilePartyHelper), "DesertTroopsFromParty")]
         public static class MobilePartyHelperDesertTroopsFromParty
         {
@@ -137,7 +131,6 @@ namespace UniqueTroopsGoneWild
 
         // check if an Upgraded troop is being .. upgraded to a new type, and put up their gear for others to take
         // place a new call to the helper
-        // appears to work
         [HarmonyPatch(typeof(PartyUpgraderCampaignBehavior), "UpgradeTroop")]
         public static class PartyUpgraderCampaignBehaviorUpgradeTroop
         {
@@ -197,19 +190,17 @@ namespace UniqueTroopsGoneWild
         [HarmonyPatch(typeof(MapEventParty), "OnTroopKilled")]
         public static class MapEventPartyOnTroopKilled
         {
-            private const int DropPercent = 66;
-
             public static void Postfix(MapEventParty __instance, UniqueTroopDescriptor troopSeed, FlattenedTroopRoster ____roster)
             {
-                if (MapEvent.PlayerMapEvent is not null)
-                    return;
                 var troop = ____roster[troopSeed].Troop;
                 for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
                 {
                     var item = troop.Equipment[index];
                     if (item.IsEmpty)
                         continue;
-                    if (Rng.Next(0, 101) > DropPercent)
+                    // always take the ammo
+                    if (Rng.Next(0, 101) > Globals.Settings.DropPercent && item.Item.ItemType is not
+                            (ItemObject.ItemTypeEnum.Arrows or ItemObject.ItemTypeEnum.Bolts or ItemObject.ItemTypeEnum.Bullets))
                         continue;
                     if (LootRecord.TryGetValue(__instance.Party, out _))
                         LootRecord[__instance.Party].Add(new EquipmentElement(item));

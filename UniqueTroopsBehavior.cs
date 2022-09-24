@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
-using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.Core;
 using TaleWorlds.Localization;
 using TaleWorlds.ObjectSystem;
@@ -22,20 +21,15 @@ namespace UniqueTroopsGoneWild
         public override void RegisterEvents()
         {
             CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, OnDailyTick);
-            CampaignEvents.OnPartyRemovedEvent.AddNonSerializedListener(this, OnPartyRemoved);
         }
 
         public static void OnDailyTick()
         {
             if (Environment.MachineName != "MEOWMEOW")
                 return;
-            var reallyOrphaned = Helper.CheckTracking(out var orphans);
+            var reallyOrphaned = CheckTracking(out var orphans);
             if (orphans.Count != 0 || reallyOrphaned.Count != 0)
                 Debugger.Break();
-        }
-
-        public static void OnPartyRemoved(PartyBase partyBase)
-        {
         }
 
         public override void SyncData(IDataStore dataStore)

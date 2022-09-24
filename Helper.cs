@@ -6,7 +6,6 @@ using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.GameMenus;
-using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.CampaignSystem.Settlements;
@@ -109,11 +108,6 @@ namespace UniqueTroopsGoneWild
                 Log.Debug?.Log($"Orphaned: {troop.Name} {troop.StringId}");
             foreach (var troop in reallyOrphaned)
                 Log.Debug?.Log($"Really orphaned: {troop.Name} {troop.StringId}");
-            //foreach (var troop in headless)
-            //{
-            //    Log.Debug?.Log($"Removing headless: {troop.Name} {troop.StringId}");
-            //    Troops.Remove(troop);
-            //}
 
             Log.Debug?.Log($"Found {orphaned.Count} orphaned troops out of {allUpgradedTroops.CountQ()}");
             Log.Debug?.Log($"Found {reallyOrphaned.Count} really orphaned troops out of {allRosters.SumQ(r => r.TotalRegulars)}");
