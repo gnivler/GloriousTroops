@@ -186,7 +186,7 @@ namespace UniqueTroopsGoneWild
         {
             __result = TroopRoster.CreateDummyTroopRoster();
             Dictionary<string, Tuple<CharacterObject, int, int>> compactList = new();
-            foreach (var element in ___mobileParty.MemberRoster.GetTroopRoster())
+            foreach (var element in ___mobileParty.PrisonRoster.GetTroopRoster())
             {
                 var key = element.Character.Name.ToString();
                 if (compactList.TryGetValue(key, out var data))
