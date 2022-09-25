@@ -44,6 +44,9 @@ namespace UniqueTroopsGoneWild
                 }
 
                 LootRecord.Remove(winnerParty);
+                var loser = mapEvent.PartiesOnSide(winnerParty.OpponentSide);
+                foreach (var party in loser.SelectQ(p => p.Party))
+                    LootRecord.Remove(party);
             }
         }
 
@@ -248,8 +251,6 @@ namespace UniqueTroopsGoneWild
                 for (var index = 0; index < currentTroopRoster.Count; ++index)
                 {
                     var elementCopyAtIndex = currentTroopRoster.GetElementCopyAtIndex(index);
-                    //if (elementCopyAtIndex.Character.Name.Contains("Upgraded"))
-                    //   Debugger.Break();
                     if (!map.TryGetValue(elementCopyAtIndex.Character.Name.ToString(), out var partyCharacterVm))
                     {
                         partyCharacterVm = new PartyCharacterVM(__instance.PartyScreenLogic, ProcessCharacterLock, SetSelectedCharacter, OnTransferTroop, null, OnFocusCharacter, __instance, currentTroopRoster, index, type, (PartyScreenLogic.PartyRosterSide)side, __instance.PartyScreenLogic.IsTroopTransferable(type, elementCopyAtIndex.Character, side), ____fiveStackShortcutkeyText, ____entireStackShortcutkeyText);

@@ -116,7 +116,7 @@ namespace UniqueTroopsGoneWild
                             && possibleUpgrade.EquipmentElement.Item.PrimaryWeapon.WeaponClass
                                 is not (WeaponClass.Javelin or WeaponClass.Stone))
                         {
-                            // don't want to swap out a ranged weapon for a melee weapon
+                            // if we're looking at a bow/crossbow/pistol/musket, make sure it's a ranged troop
                             if (troop.Character.GetFormationClass() is not (FormationClass.Ranged or FormationClass.Skirmisher or FormationClass.HorseArcher))
                                 continue;
                             for (var slot = 0; slot < 4; slot++)
@@ -128,7 +128,7 @@ namespace UniqueTroopsGoneWild
                                 }
 
                             // weapon is an upgrade so take it and take the ammo
-                            if (DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, rangedSlot))
+                            if (DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, rangedSlot))
                             {
                                 var ammo = GetAmmo(possibleUpgrade, usableEquipment);
                                 if (ammo.IsEmpty)
@@ -140,7 +140,7 @@ namespace UniqueTroopsGoneWild
                                         ammoSlot = slot;
 
                                 possibleUpgrade = new ItemRosterElement(ammo.EquipmentElement.Item, 1);
-                                DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, ammoSlot);
+                                DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, ammoSlot);
                                 continue;
                             }
                         }
@@ -153,10 +153,14 @@ namespace UniqueTroopsGoneWild
                         var slot = slots[0];
                         if (Equipment.IsItemFitsToSlot((EquipmentIndex)slot, possibleUpgrade.EquipmentElement.Item))
                         {
-                            DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment);
+                            DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment);
                             break;
                         }
                     }
+
+                    // if all the troops were upgraded, bail out to the next troop
+                    if (party.MemberRoster.FindIndexOfTroop(troop.Character.OriginalCharacter) == -1)
+                        break;
                 }
             }
         }
@@ -166,7 +170,7 @@ namespace UniqueTroopsGoneWild
         private static List<TroopRosterElement> UpdateTroops(PartyBase party)
         {
             var rosterElements = party.MemberRoster.GetTroopRoster()
-                .OrderBy(e => e.Character.IsHero)
+                .OrderByDescending(e => e.Character.IsHero)
                 .ThenByDescending(e => e.Character.Level)
                 .ThenByDescending(SumValue).ToListQ();
             if (Globals.Settings.OnlyBandits)
@@ -194,9 +198,7 @@ namespace UniqueTroopsGoneWild
                     Troops.Add(troop);
                     EquipmentMap.Add(troop.StringId, troop.Equipment);
                     party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
-                    // the final troop won't exist any longer due to being replaced earlier
-                    var index = party.MemberRoster.FindIndexOfTroop(troop.OriginalCharacter);
-                    if (party.MemberRoster.GetElementNumber(index) > 0)
+                    if (party.MemberRoster.Contains(troop.OriginalCharacter))
                         party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
                 }
                 else
@@ -239,23 +241,26 @@ namespace UniqueTroopsGoneWild
         private static bool DoPossibleUpgrade(
             PartyBase party,
             ItemRosterElement possibleUpgrade,
-            ref TroopRosterElement troopRosterElement,
+            TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment,
             int slotOverride = -1)
         {
             // current item where it's the right kind
             var targetSlot = slotOverride < 0 ? GetLowestValueSlotThatFits(troopRosterElement.Character.Equipment, possibleUpgrade) : slotOverride;
             var replacedItem = troopRosterElement.Character.Equipment[targetSlot];
+            // avoid replacing bows with melee weapons
+            if (replacedItem.Item?.ItemType is ItemObject.ItemTypeEnum.Bow or ItemObject.ItemTypeEnum.Crossbow or ItemObject.ItemTypeEnum.Pistol or ItemObject.ItemTypeEnum.Musket
+                && possibleUpgrade.EquipmentElement.Item.ItemType is not (ItemObject.ItemTypeEnum.Bow or ItemObject.ItemTypeEnum.Crossbow or ItemObject.ItemTypeEnum.Pistol or ItemObject.ItemTypeEnum.Musket))
+                return false;
             // every slot is better or the equipment isn't an upgrade
             if (targetSlot < 0 || replacedItem.ItemValue >= possibleUpgrade.EquipmentElement.ItemValue)
                 return false;
-            for (var i = 0; i < troopRosterElement.Number; i++)
+            var iterations = troopRosterElement.Number;
+            for (var i = 0; i < iterations; i++)
             {
                 var troop = !troopRosterElement.Character.IsHero && troopRosterElement.Character.OriginalCharacter is null
                     ? CreateCustomCharacter(troopRosterElement)
                     : troopRosterElement.Character;
-                if (troop.Name is null)
-                    Debugger.Break();
                 Log.Debug?.Log($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
                 // assign the upgrade
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
@@ -286,8 +291,6 @@ namespace UniqueTroopsGoneWild
                 }
             }
 
-            if (party.MemberRoster.GetTroopRoster().AnyQ(tre => tre.Character.Name == null))
-                Debugger.Break();
             return true;
         }
 
