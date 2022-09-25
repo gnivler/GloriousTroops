@@ -43,9 +43,8 @@ namespace UniqueTroopsGoneWild
                         EquipmentUpgrading.UpgradeEquipment(winnerParty, lootedItems[winnerParty]);
                 }
 
-                LootRecord.Remove(winnerParty);
-                var loser = mapEvent.PartiesOnSide(winnerParty.OpponentSide);
-                foreach (var party in loser.SelectQ(p => p.Party))
+                var parties = mapEvent.InvolvedParties;
+                foreach (var party in parties)
                     LootRecord.Remove(party);
             }
         }
