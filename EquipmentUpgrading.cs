@@ -94,8 +94,7 @@ namespace UniqueTroopsGoneWild
                     // don't take items we can't use
                     if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
                         continue;
-                    var upgradeValue = possibleUpgrade.EquipmentElement.ItemValue;
-                    if (upgradeValue <= LeastValuableItem(troop.Character))
+                    if (possibleUpgrade.EquipmentElement.ItemValue <= LeastValuableItem(troop.Character))
                         break;
                     // only take ammo manually
                     if (possibleUpgrade.EquipmentElement.Item.ItemType
