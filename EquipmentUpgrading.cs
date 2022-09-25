@@ -24,6 +24,9 @@ namespace UniqueTroopsGoneWild
         private static readonly AccessTools.FieldRef<BasicCharacterObject, bool> IsSoldier =
             AccessTools.FieldRefAccess<BasicCharacterObject, bool>("<IsSoldier>k__BackingField");
 
+        private static readonly AccessTools.FieldRef<Equipment, EquipmentElement[]> ItemSlots =
+            AccessTools.FieldRefAccess<Equipment, EquipmentElement[]>("_itemSlots");
+
         private static MethodInfo setName;
 
         internal static void UpgradeEquipment(PartyBase party, ItemRoster loot)
@@ -83,7 +86,7 @@ namespace UniqueTroopsGoneWild
                     if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Crossbow))
                         continue;
                     // prevent them from getting a bunch of the same item
-                    if (troop.Character.Equipment.Contains(possibleUpgrade.EquipmentElement))
+                    if (ItemSlots(troop.Character.Equipment).Contains(possibleUpgrade.EquipmentElement))
                         continue;
                     // if it's a horse slot but we already have enough, skip to next upgrade EquipmentElement
                     if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && party.MemberRoster.CountMounted() > party.MemberRoster.TotalManCount / 2)
@@ -254,6 +257,11 @@ namespace UniqueTroopsGoneWild
                 return false;
             // every slot is better or the equipment isn't an upgrade
             if (targetSlot < 0 || replacedItem.ItemValue >= possibleUpgrade.EquipmentElement.ItemValue)
+                return false;
+            // allow a better shield
+            if (possibleUpgrade.EquipmentElement.Item?.ItemType is ItemObject.ItemTypeEnum.Shield
+                && replacedItem.Item?.ItemType is not ItemObject.ItemTypeEnum.Shield
+                && ItemSlots(troopRosterElement.Character.Equipment).AnyQ(e => e.Item?.ItemType is ItemObject.ItemTypeEnum.Shield))
                 return false;
             var iterations = troopRosterElement.Number;
             for (var i = 0; i < iterations; i++)
