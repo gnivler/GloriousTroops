@@ -23,7 +23,7 @@ namespace UniqueTroopsGoneWild
         private static readonly AccessTools.FieldRef<BasicCharacterObject, bool> IsSoldier =
             AccessTools.FieldRefAccess<BasicCharacterObject, bool>("<IsSoldier>k__BackingField");
 
-        private static readonly AccessTools.FieldRef<Equipment, EquipmentElement[]> ItemSlots =
+        public static readonly AccessTools.FieldRef<Equipment, EquipmentElement[]> ItemSlots =
             AccessTools.FieldRefAccess<Equipment, EquipmentElement[]>("_itemSlots");
 
         private static MethodInfo setName;
@@ -107,43 +107,40 @@ namespace UniqueTroopsGoneWild
                     Log.Debug?.Log($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, worth {possibleUpgrade.EquipmentElement.ItemValue} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
                     var rangedSlot = -1;
                     // assume that sane builds are coming in (no double bows, missing ammo)
-                    if (possibleUpgrade.EquipmentElement.Item.HasWeaponComponent)
+                    if (possibleUpgrade.EquipmentElement.Item?.ItemType
+                            is ItemObject.ItemTypeEnum.Bow
+                            or ItemObject.ItemTypeEnum.Crossbow
+                            or ItemObject.ItemTypeEnum.Pistol
+                            or ItemObject.ItemTypeEnum.Musket
+                        && possibleUpgrade.EquipmentElement.Item.PrimaryWeapon.WeaponClass
+                            is not (WeaponClass.Javelin or WeaponClass.Stone))
                     {
-                        if (possibleUpgrade.EquipmentElement.Item?.ItemType
-                                is ItemObject.ItemTypeEnum.Bow
-                                or ItemObject.ItemTypeEnum.Crossbow
-                                or ItemObject.ItemTypeEnum.Pistol
-                                or ItemObject.ItemTypeEnum.Musket
-                            && possibleUpgrade.EquipmentElement.Item.PrimaryWeapon.WeaponClass
-                                is not (WeaponClass.Javelin or WeaponClass.Stone))
+                        // if we're looking at a bow/crossbow/pistol/musket, make sure it's a ranged troop
+                        if (troop.Character.GetFormationClass() is not (FormationClass.Ranged or FormationClass.Skirmisher or FormationClass.HorseArcher))
+                            continue;
+                        for (var slot = 0; slot < 4; slot++)
+                            if (troop.Character.Equipment[slot].Item?.PrimaryWeapon is not null
+                                && troop.Character.Equipment[slot].Item.PrimaryWeapon.IsRangedWeapon)
+                            {
+                                rangedSlot = slot;
+                                break;
+                            }
+
+                        // weapon is an upgrade so take it and take the ammo
+                        if (DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, rangedSlot))
                         {
-                            // if we're looking at a bow/crossbow/pistol/musket, make sure it's a ranged troop
-                            if (troop.Character.GetFormationClass() is not (FormationClass.Ranged or FormationClass.Skirmisher or FormationClass.HorseArcher))
+                            var ammo = GetAmmo(possibleUpgrade, usableEquipment);
+                            if (ammo.IsEmpty)
                                 continue;
+                            var ammoSlot = -1;
                             for (var slot = 0; slot < 4; slot++)
                                 if (troop.Character.Equipment[slot].Item?.PrimaryWeapon is not null
-                                    && troop.Character.Equipment[slot].Item.PrimaryWeapon.IsRangedWeapon)
-                                {
-                                    rangedSlot = slot;
-                                    break;
-                                }
+                                    && troop.Character.Equipment[slot].Item.PrimaryWeapon.IsAmmo)
+                                    ammoSlot = slot;
 
-                            // weapon is an upgrade so take it and take the ammo
-                            if (DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, rangedSlot))
-                            {
-                                var ammo = GetAmmo(possibleUpgrade, usableEquipment);
-                                if (ammo.IsEmpty)
-                                    continue;
-                                var ammoSlot = -1;
-                                for (var slot = 0; slot < 4; slot++)
-                                    if (troop.Character.Equipment[slot].Item?.PrimaryWeapon is not null
-                                        && troop.Character.Equipment[slot].Item.PrimaryWeapon.IsAmmo)
-                                        ammoSlot = slot;
-
-                                possibleUpgrade = new ItemRosterElement(ammo.EquipmentElement.Item, 1);
-                                DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, ammoSlot);
-                                continue;
-                            }
+                            possibleUpgrade = new ItemRosterElement(ammo.EquipmentElement.Item, 1);
+                            DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment, ammoSlot);
+                            continue;
                         }
                     }
 
@@ -247,7 +244,7 @@ namespace UniqueTroopsGoneWild
             int slotOverride = -1)
         {
             // current item where it's the right kind
-            var targetSlot = slotOverride < 0 ? GetLowestValueSlotThatFits(troopRosterElement.Character.Equipment, possibleUpgrade) : slotOverride;
+            //var targetSlot = slotOverride < 0 ? GetLowestValueSlotThatFits(troopRosterElement.Character.Equipment, possibleUpgrade) : slotOverride;
             var replacedItem = troopRosterElement.Character.Equipment[targetSlot];
             // avoid replacing bows with melee weapons
             if (replacedItem.Item?.ItemType is ItemObject.ItemTypeEnum.Bow or ItemObject.ItemTypeEnum.Crossbow or ItemObject.ItemTypeEnum.Pistol or ItemObject.ItemTypeEnum.Musket
