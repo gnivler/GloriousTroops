@@ -2,6 +2,8 @@
 using System.IO;
 using System.Text;
 using TaleWorlds.Engine;
+using TaleWorlds.ModuleManager;
+using TaleWorlds.MountAndBlade;
 using Path = System.IO.Path;
 
 namespace UniqueTroopsGoneWild
@@ -10,14 +12,14 @@ namespace UniqueTroopsGoneWild
     internal class DeferringLogger
     {
         private readonly LogWriter logWriter;
-        internal static readonly string logFilename = Path.Combine(new FileInfo(@"..\..\Modules\UniqueTroopsGoneWild\").DirectoryName, "log.txt");
-        
+        internal static readonly string logFilename = Path.Combine(ModuleHelper.GetModuleFullPath("UniqueTroopsGoneWild"), "log.txt");
+
         internal DeferringLogger()
         {
             logWriter = new LogWriter(new StreamWriter(logFilename, true, Encoding.ASCII));
         }
 
-        internal LogWriter? Debug => Globals.Settings.Debug ? logWriter : null;
+        internal LogWriter? Debug => Globals.Settings?.Debug is not null ? logWriter : null;
 
         internal readonly struct LogWriter
         {

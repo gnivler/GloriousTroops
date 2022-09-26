@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
@@ -16,7 +15,7 @@ using static UniqueTroopsGoneWild.Helper;
 
 namespace UniqueTroopsGoneWild
 {
-    internal static class EquipmentUpgrading
+    public static class EquipmentUpgrading
     {
         private static readonly string[] BadLoot = { "" };
         private static readonly List<int> Slots = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
@@ -29,10 +28,10 @@ namespace UniqueTroopsGoneWild
 
         private static MethodInfo setName;
 
-        internal static void UpgradeEquipment(PartyBase party, ItemRoster loot)
+        public static void UpgradeEquipment(PartyBase party, ItemRoster loot)
         {
-            var lootedItems = loot.OrderByDescending(i => i.EquipmentElement.ItemValue).ToListQ();
-            var usableEquipment = lootedItems.WhereQ(i =>
+            var lootedItems = loot.OrderByDescending(i => i.EquipmentElement.ItemValue).ToList();
+            var usableEquipment = lootedItems.Where(i =>
                     i.EquipmentElement.Item.ItemType
                         is ItemObject.ItemTypeEnum.Horse
                         or ItemObject.ItemTypeEnum.OneHandedWeapon
@@ -54,7 +53,7 @@ namespace UniqueTroopsGoneWild
                         or ItemObject.ItemTypeEnum.ChestArmor
                         or ItemObject.ItemTypeEnum.Cape
                         or ItemObject.ItemTypeEnum.HorseHarness
-                    && i.EquipmentElement.ItemValue >= Globals.Settings.MinLootValue)
+                    && i.EquipmentElement.ItemValue >= (Globals.Settings?.MinLootValue ?? 1000))
                 .OrderByDescending(i => i.EquipmentElement.ItemValue).ToListQ();
             usableEquipment.RemoveAll(e => BadLoot.Contains(e.EquipmentElement.Item.StringId));
             if (!usableEquipment.Any())
@@ -76,12 +75,12 @@ namespace UniqueTroopsGoneWild
                     var possibleUpgrade = usableEquipment[index];
                     // bail-out clauses
                     // bandits will loot anything
-                    if (Globals.Settings.MaintainCulture
+                    if ((Globals.Settings?.MaintainCulture ?? false)
                         && troop.Character.Occupation is not Occupation.Bandit
                         && possibleUpgrade.EquipmentElement.Item.Culture != troop.Character.Culture
                         && possibleUpgrade.EquipmentElement.Item.Culture != CampaignData.NeutralFaction.Culture)
                         continue;
-                    if (!Globals.Settings.Mounts && (possibleUpgrade.EquipmentElement.Item.HasHorseComponent || possibleUpgrade.EquipmentElement.Item.HasSaddleComponent))
+                    if (!(Globals.Settings?.Mounts ?? true) && (possibleUpgrade.EquipmentElement.Item.HasHorseComponent || possibleUpgrade.EquipmentElement.Item.HasSaddleComponent))
                         continue;
                     if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Crossbow))
                         continue;
@@ -175,7 +174,7 @@ namespace UniqueTroopsGoneWild
                 .OrderByDescending(e => e.Character.IsHero)
                 .ThenByDescending(e => e.Character.Level)
                 .ThenByDescending(SumValue).ToListQ();
-            if (Globals.Settings.OnlyBandits)
+            if (Globals.Settings?.OnlyBandits ?? false)
                 rosterElements.RemoveAll(e => e.Character.Occupation is not Occupation.Bandit);
             return rosterElements;
 
@@ -273,7 +272,7 @@ namespace UniqueTroopsGoneWild
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
                 // put anything replaced back into the pile
-                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= Globals.Settings.MinLootValue)
+                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= (Globals.Settings?.MinLootValue ?? 1000))
                 {
                     //Log.Debug?.Log($"### Returning {replacedItem.Item?.Name} to the bag");
                     var index = usableEquipment.SelectQ(e => e.EquipmentElement.Item).ToListQ().FindIndexQ(replacedItem.Item);
@@ -301,7 +300,7 @@ namespace UniqueTroopsGoneWild
             return true;
         }
 
-        private static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
+        public static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
         {
             var tempCharacter = CharacterObject.CreateFrom(troop.Character);
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
