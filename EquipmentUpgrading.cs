@@ -30,7 +30,7 @@ namespace UniqueTroopsGoneWild
 
         public static void UpgradeEquipment(PartyBase party, ItemRoster loot)
         {
-            var lootedItems = loot.OrderByDescending(i => i.EquipmentElement.ItemValue).ToList();
+            var lootedItems = loot.OrderByDescending(i => i.EquipmentElement.Value()).ToList();
             var usableEquipment = lootedItems.Where(i =>
                     i.EquipmentElement.Item.ItemType
                         is ItemObject.ItemTypeEnum.Horse
@@ -54,7 +54,7 @@ namespace UniqueTroopsGoneWild
                         or ItemObject.ItemTypeEnum.Cape
                         or ItemObject.ItemTypeEnum.HorseHarness
                     && i.EquipmentElement.ItemValue >= (Globals.Settings?.MinLootValue ?? 1000))
-                .OrderByDescending(i => i.EquipmentElement.ItemValue).ToListQ();
+                .OrderByDescending(i => i.EquipmentElement.Value()).ToListQ();
             usableEquipment.RemoveAll(e => BadLoot.Contains(e.EquipmentElement.Item.StringId));
             if (!usableEquipment.Any())
                 return;
@@ -93,7 +93,7 @@ namespace UniqueTroopsGoneWild
                     // don't take items we can't use
                     if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
                         continue;
-                    if (possibleUpgrade.EquipmentElement.ItemValue <= LeastValuableItem(troop.Character))
+                    if (possibleUpgrade.EquipmentElement.Value() <= LeastValuableItem(troop.Character))
                         break;
                     // only take ammo manually
                     if (possibleUpgrade.EquipmentElement.Item.ItemType
@@ -179,7 +179,7 @@ namespace UniqueTroopsGoneWild
             {
                 var value = 0;
                 for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
-                    value += element.Character.Equipment[index].ItemValue;
+                    value += element.Character.Equipment[index].Value();
                 return value;
             }
         }
@@ -211,13 +211,14 @@ namespace UniqueTroopsGoneWild
             }
         }
 
+        
         private static int LeastValuableItem(CharacterObject tempCharacter)
         {
             var leastValuable = int.MaxValue;
             for (var slot = 0; slot < Equipment.EquipmentSlotLength; slot++)
             {
-                if (tempCharacter.Equipment[slot].ItemValue < leastValuable)
-                    leastValuable = tempCharacter.Equipment[slot].ItemValue;
+                if (tempCharacter.Equipment[slot].Value() < leastValuable)
+                    leastValuable = tempCharacter.Equipment[slot].Value();
             }
 
             return leastValuable;
@@ -227,10 +228,12 @@ namespace UniqueTroopsGoneWild
         {
             var ammo = possibleUpgrade.EquipmentElement.Item.ItemType switch
             {
-                ItemObject.ItemTypeEnum.Bow => usableEquipment.FirstOrDefaultQ(e => e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Arrows),
-                ItemObject.ItemTypeEnum.Crossbow => usableEquipment.FirstOrDefaultQ(e => e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bolts),
-                ItemObject.ItemTypeEnum.Musket or ItemObject.ItemTypeEnum.Pistol =>
-                    usableEquipment.FirstOrDefaultQ(e => e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bullets),
+                ItemObject.ItemTypeEnum.Bow => usableEquipment.WhereQ(e =>
+                    e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Arrows).OrderByDescending(e => e.EquipmentElement.Value()).FirstOrDefault(),
+                ItemObject.ItemTypeEnum.Crossbow => usableEquipment.WhereQ(e =>
+                    e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bolts).OrderByDescending(e => e.EquipmentElement.Value()).FirstOrDefault(),
+                ItemObject.ItemTypeEnum.Musket or ItemObject.ItemTypeEnum.Pistol => usableEquipment.WhereQ(e =>
+                    e.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bullets).OrderByDescending(e => e.EquipmentElement.Value()).FirstOrDefault(),
                 _ => default
             };
             return ammo;
@@ -251,7 +254,7 @@ namespace UniqueTroopsGoneWild
                 && possibleUpgrade.EquipmentElement.Item.ItemType is not (ItemObject.ItemTypeEnum.Bow or ItemObject.ItemTypeEnum.Crossbow or ItemObject.ItemTypeEnum.Pistol or ItemObject.ItemTypeEnum.Musket))
                 return false;
             // every slot is better or the equipment isn't an upgrade
-            if (targetSlot < 0 || replacedItem.ItemValue >= possibleUpgrade.EquipmentElement.ItemValue)
+            if (targetSlot < 0 || replacedItem.Value() >= possibleUpgrade.EquipmentElement.Value())
                 return false;
             // allow a better shield
             if (possibleUpgrade.EquipmentElement.Item?.ItemType is ItemObject.ItemTypeEnum.Shield
@@ -269,7 +272,7 @@ namespace UniqueTroopsGoneWild
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
                 // put anything replaced back into the pile
-                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= (Globals.Settings?.MinLootValue ?? 1000))
+                if (!replacedItem.IsEmpty && replacedItem.Value() >= (Globals.Settings?.MinLootValue ?? 1000))
                 {
                     //Log.Debug?.Log($"### Returning {replacedItem.Item?.Name} to the bag");
                     var index = usableEquipment.SelectQ(e => e.EquipmentElement.Item).ToListQ().FindIndexQ(replacedItem.Item);
@@ -282,7 +285,7 @@ namespace UniqueTroopsGoneWild
                     else
                     {
                         usableEquipment.Add(new ItemRosterElement(replacedItem.Item, 1));
-                        usableEquipment = usableEquipment.OrderByDescending(e => e.EquipmentElement.ItemValue).ToListQ();
+                        usableEquipment = usableEquipment.OrderByDescending(e => e.EquipmentElement.Value()).ToListQ();
                     }
 
                     // decrement and remove ItemRosterElements
@@ -332,9 +335,9 @@ namespace UniqueTroopsGoneWild
                     or ItemObject.ItemTypeEnum.Bolts
                     or ItemObject.ItemTypeEnum.Bullets) continue;
 
-                if (equipment[slot].ItemValue < lowestValue)
+                if (equipment[slot].Value() < lowestValue)
                 {
-                    lowestValue = equipment[slot].ItemValue;
+                    lowestValue = equipment[slot].Value();
                     targetSlot = slot;
                 }
             }
