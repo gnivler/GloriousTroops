@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
@@ -65,6 +67,7 @@ namespace UniqueTroopsGoneWild
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
             Globals.Settings = Settings.Instance;
+            Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
         }
 
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
