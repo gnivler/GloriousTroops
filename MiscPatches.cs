@@ -258,7 +258,7 @@ namespace UniqueTroopsGoneWild
                     }
                     else
                     {
-                        elementCopyAtIndex.Number++;
+                        elementCopyAtIndex.Number += partyCharacterVm.Number;
                         partyCharacterVm.Troop = elementCopyAtIndex;
                     }
 

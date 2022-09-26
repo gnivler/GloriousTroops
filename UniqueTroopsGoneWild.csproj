@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Version>1.0.4</Version>
+        <Version>1.0.5</Version>
         <TargetFramework>net472</TargetFramework>
         <Platforms>x64</Platforms>
         <LangVersion>default</LangVersion>
@@ -63,5 +63,17 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>compile</IncludeAssets>
         </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="UniqueTroopsGoneWildUnitTests\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="UniqueTroopsGoneWildUnitTests\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="UniqueTroopsGoneWildUnitTests\**" />
     </ItemGroup>
 </Project>

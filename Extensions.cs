@@ -1,6 +1,4 @@
-using System;
 using TaleWorlds.CampaignSystem.Roster;
-using TaleWorlds.Core;
 using TaleWorlds.LinQuick;
 
 namespace UniqueTroopsGoneWild

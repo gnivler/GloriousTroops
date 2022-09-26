@@ -193,6 +193,8 @@ namespace UniqueTroopsGoneWild
             public static void Postfix(MapEventParty __instance, UniqueTroopDescriptor troopSeed, FlattenedTroopRoster ____roster)
             {
                 var troop = ____roster[troopSeed].Troop;
+                if (troop == CharacterObject.PlayerCharacter)
+                    return;
                 for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
                 {
                     var item = troop.Equipment[index];
