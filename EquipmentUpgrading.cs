@@ -112,6 +112,15 @@ namespace UniqueTroopsGoneWild
                     // don't take items we can't use
                     if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
                         continue;
+                    // if it's ammo but we have no ranged weapons, skip to next upgrade EquipmentElement
+                    if (possibleUpgrade.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Arrows or ItemObject.ItemTypeEnum.Bolts
+                        && (!troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Bow)
+                            || !troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Crossbow)))
+                        continue;
+                    if (possibleUpgrade.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bullets
+                        && (!troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Pistol)
+                            || !troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Musket)))
+                        continue;
                     LogBoth($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, valued at {possibleUpgrade.EquipmentElement.Value()} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
                     DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment);
                     // if all the troops were upgraded, bail out to the next troop
@@ -178,15 +187,6 @@ namespace UniqueTroopsGoneWild
             TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment)
         {
-            // if it's ammo but we have no ranged weapons, skip to next upgrade EquipmentElement
-            if (possibleUpgrade.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Arrows or ItemObject.ItemTypeEnum.Bolts
-                && (!troopRosterElement.Character.Equipment.HasWeaponOfClass(WeaponClass.Bow)
-                    || !troopRosterElement.Character.Equipment.HasWeaponOfClass(WeaponClass.Crossbow)))
-                return;
-            if (possibleUpgrade.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Bullets
-                && (!troopRosterElement.Character.Equipment.HasWeaponOfClass(WeaponClass.Pistol)
-                    || !troopRosterElement.Character.Equipment.HasWeaponOfClass(WeaponClass.Musket)))
-                return;
             var targetSlot = GetSlotOfLeastValuableOfType(possibleUpgrade.EquipmentElement.Item.ItemType, troopRosterElement);
             if (targetSlot < 0)
                 return;
