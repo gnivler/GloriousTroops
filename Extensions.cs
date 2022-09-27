@@ -12,9 +12,9 @@ namespace UniqueTroopsGoneWild
             return troopRoster.GetTroopRoster().WhereQ(t => !t.Character.FirstBattleEquipment[10].IsEmpty).SumQ(t => t.Number);
         }
 
-        internal static int Value(this EquipmentElement element)
+        internal static float Value(this EquipmentElement element)
         {
-            return Convert.ToInt32(element.Item?.Tierf ?? element.ItemValue);
+            return element.Item?.Tierf ?? element.ItemValue;
         }
     }
 }

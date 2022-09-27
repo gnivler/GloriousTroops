@@ -67,6 +67,7 @@ namespace UniqueTroopsGoneWild
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
             Globals.Settings = Settings.Instance;
+            Globals.Log.Restart();
             Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
         }
 
