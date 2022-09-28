@@ -1,6 +1,3 @@
-using System;
-using JetBrains.Annotations;
-using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.Core;
 using TaleWorlds.LinQuick;
@@ -31,19 +28,6 @@ namespace UniqueTroopsGoneWild
             {
                 Number = sumAlive,
                 WoundedNumber = sumWounded
-            };
-            return result;
-        }
-
-        internal static TroopRosterElement AllSimilar(this CharacterObject character, TroopRoster roster)
-        {
-            var troop = character;
-            var sumAlive = roster?.GetTroopRoster().WhereQ(e => e.Character.Name.Equals(troop.Name)).SumQ(t => t.Number);
-            var sumWounded = roster?.GetTroopRoster().WhereQ(e => e.Character.Name.Equals(troop.Name)).SumQ(t => t.WoundedNumber);
-            var result = new TroopRosterElement(troop)
-            {
-                Number = sumAlive ?? 0,
-                WoundedNumber = sumWounded ?? 0
             };
             return result;
         }

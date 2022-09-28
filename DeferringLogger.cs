@@ -1,11 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Net;
 using System.Text;
-using TaleWorlds.Engine;
-using TaleWorlds.ModuleManager;
-using TaleWorlds.MountAndBlade;
-using Path = System.IO.Path;
 
 namespace UniqueTroopsGoneWild
 {
@@ -34,28 +29,28 @@ namespace UniqueTroopsGoneWild
 
         internal struct LogWriter
         {
-            internal StreamWriter sw;
+            internal StreamWriter Sw;
 
             public LogWriter(StreamWriter sw)
             {
-                this.sw = sw;
+                Sw = sw;
                 sw.AutoFlush = true;
             }
 
             internal void Log(object input)
             {
-                sw.WriteLine($"[{DateTime.Now.ToLongTimeString()}] {(string.IsNullOrEmpty(input?.ToString()) ? "IsNullOrEmpty" : input)}");
-                sw.Flush();
+                Sw.WriteLine($"[{DateTime.Now.ToLongTimeString()}] {(string.IsNullOrEmpty(input?.ToString()) ? "IsNullOrEmpty" : input)}");
+                Sw.Flush();
             }
         }
 
         internal void Restart()
         {
-            logWriter.sw.Close();
+            logWriter.Sw.Close();
             File.Copy(logPath, OldLogPath, true);
             File.Delete(logPath);
-            logWriter.sw = new StreamWriter(logPath, true, Encoding.ASCII);
-            logWriter.sw.AutoFlush = true;
+            logWriter.Sw = new StreamWriter(logPath, true, Encoding.ASCII);
+            logWriter.Sw.AutoFlush = true;
         }
     }
 }
