@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Reflection;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
 
+// ReSharper disable ClassNeverInstantiated.Global  
 // ReSharper disable InconsistentNaming
 
 namespace UniqueTroopsGoneWild
@@ -67,8 +67,11 @@ namespace UniqueTroopsGoneWild
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
             Globals.Settings = Settings.Instance;
-            Globals.Log.Restart();
+            if (Globals.Settings!.Debug)
+                Globals.Log.Restart();
             Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
+            var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
+            harmony.Patch(ctor, transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
         }
 
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
