@@ -45,6 +45,7 @@ namespace UniqueTroopsGoneWild
             internal void Log(object input)
             {
                 sw.WriteLine($"[{DateTime.Now.ToLongTimeString()}] {(string.IsNullOrEmpty(input?.ToString()) ? "IsNullOrEmpty" : input)}");
+                sw.Flush();
             }
         }
 
@@ -54,6 +55,7 @@ namespace UniqueTroopsGoneWild
             File.Copy(logPath, OldLogPath, true);
             File.Delete(logPath);
             logWriter.sw = new StreamWriter(logPath, true, Encoding.ASCII);
+            logWriter.sw.AutoFlush = true;
         }
     }
 }
