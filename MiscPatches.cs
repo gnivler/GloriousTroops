@@ -9,13 +9,13 @@ using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.CampaignSystem.Settlements;
-using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
 using TaleWorlds.MountAndBlade.ViewModelCollection.Scoreboard;
 using static UniqueTroopsGoneWild.Globals;
 
+// ReSharper disable CommentTypo
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedType.Global
 // ReSharper disable UnusedMember.Local
@@ -29,7 +29,7 @@ namespace UniqueTroopsGoneWild
         [HarmonyPatch(typeof(BattleCampaignBehavior), "CollectLoots")]
         public static class BattleCampaignBehaviorCollectLoots
         {
-            public static void Prefix(MapEvent mapEvent, PartyBase winnerParty, ref Dictionary<PartyBase, ItemRoster> lootedItems)
+            public static void Prefix(MapEvent mapEvent, PartyBase winnerParty)
             {
                 if (!mapEvent.HasWinner || !winnerParty.IsMobile)
                     return;
@@ -38,9 +38,7 @@ namespace UniqueTroopsGoneWild
                     var itemRoster = new ItemRoster();
                     foreach (var e in equipment)
                         itemRoster.AddToCounts(e, 1);
-                    lootedItems.Add(winnerParty, itemRoster);
-                    if (lootedItems[winnerParty].AnyQ(i => !i.IsEmpty))
-                        EquipmentUpgrading.UpgradeEquipment(winnerParty, lootedItems[winnerParty]);
+                    EquipmentUpgrading.UpgradeEquipment(winnerParty, itemRoster);
                 }
 
                 var parties = mapEvent.InvolvedParties;
