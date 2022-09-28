@@ -234,7 +234,7 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // appears to work
+        // compact the party screen display
         [HarmonyPatch(typeof(PartyVM), "InitializePartyList")]
         public static class PartyVMInitializePartyList
         {
@@ -262,41 +262,41 @@ namespace UniqueTroopsGoneWild
                         elementCopyAtIndex.Number += partyCharacterVm.Number;
                         partyCharacterVm.Troop = elementCopyAtIndex;
                     }
-        
+
                     partyCharacterVm.ThrowOnPropertyChanged();
                     partyCharacterVm.IsLocked = partyCharacterVm.Side == PartyScreenLogic.PartyRosterSide.Right && (bool)Traverse.Create(__instance).Method("IsTroopLocked", partyCharacterVm.Troop, partyCharacterVm.IsPrisoner).GetValue();
                 }
-        
+
                 return false;
-        
+
                 void OnFocusCharacter(PartyCharacterVM partyCharacterVm)
                 {
                     AccessTools.Method(typeof(PartyVM), "OnFocusCharacter").Invoke(__instance, new object[] { partyCharacterVm });
                 }
-        
+
                 void SetSelectedCharacter(PartyCharacterVM partyCharacterVm)
                 {
                     AccessTools.Method(typeof(PartyVM), "SetSelectedCharacter").Invoke(__instance, new object[] { partyCharacterVm });
                 }
-        
+
                 void ProcessCharacterLock(PartyCharacterVM partyCharacterVm, bool b)
                 {
                     AccessTools.Method(typeof(PartyVM), "ProcessCharacterLock").Invoke(__instance, new object[] { partyCharacterVm, b });
                 }
-        
+
                 void OnTransferTroop(PartyCharacterVM partyCharacterVm, int i, int arg3, PartyScreenLogic.PartyRosterSide arg4)
                 {
                     AccessTools.Method(typeof(PartyVM), "OnTransferTroop").Invoke(__instance, new object[] { partyCharacterVm, i, arg3, arg4 });
                 }
             }
         }
-        
-        // makes the PartyTradeVM (troop widgets) show the proper number of troops by patch its sole instantiation, in this ctor
+
+        // makes the PartyTradeVM (troop widgets) show the proper number of troops by patching its sole instantiation, in this ctor
         public class PartyCharacterVMConstructor
         {
             private static readonly ConstructorInfo from = AccessTools.FirstConstructor(typeof(PartyTradeVM), c => c.GetParameters().Length > 0);
             private static readonly MethodInfo helper = AccessTools.Method(typeof(PartyCharacterVMConstructor), nameof(TrickCtor));
-        
+
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 var codes = instructions.ToListQ();
@@ -307,210 +307,45 @@ namespace UniqueTroopsGoneWild
                     if (codes[i].OperandIs(from))
                         index = i;
                 }
-        
+
                 codes.Insert(index, new CodeInstruction(OpCodes.Ldarg_S, 8)); // TroopRoster
                 codes[index + 1].opcode = OpCodes.Call;
                 codes[index + 1].operand = helper;
                 return codes.AsEnumerable();
             }
-        
+
             private static PartyTradeVM TrickCtor(PartyScreenLogic partyScreenLogic, TroopRosterElement troopRoster,
                 PartyScreenLogic.PartyRosterSide side, bool isTransfarable, bool isPrisoner,
                 Action<int, bool> onApplyTransaction, TroopRoster roster)
             {
                 var element = troopRoster.AllSimilar(roster).GetValueOrDefault();
-                var sum = element.Number + element.WoundedNumber; //   roster.GetTroopRoster().WhereQ(e => e.Character.Name.Equals(troopRoster.Character.Name)).SumQ(e => e.Number);
+                var sum = element.Number + element.WoundedNumber;
                 troopRoster.Number = sum;
                 return new PartyTradeVM(partyScreenLogic, troopRoster, side, isTransfarable, isPrisoner, onApplyTransaction);
             }
         }
-        
-        // step in to adjust counts in various places
-        [HarmonyPatch(typeof(PartyScreenLogic), "TransferTroop")]
-        public class PartyScreenLogicTransferTroop
+
+        // this will fallback to find a similar unique troop (with the same Name)
+        // it's a modified copy of the original
+        [HarmonyPatch(typeof(TroopRoster), "FindIndexOfTroop")]
+        public class TroopRosterFindIndexOfTroop
         {
-            public static bool Prefix(PartyScreenLogic __instance, PartyScreenLogic.PartyCommand command)
+            public static void Postfix(CharacterObject character, ref int __result, int ____count, TroopRosterElement[] ___data)
             {
-                var flag = false;
-                if (__instance.ValidateCommand(command))
-                {
-                    var troop = command.Character;
-                    if (command.Type == PartyScreenLogic.TroopType.Member)
+                if (__result >= 0)
+                    return;
+                for (var indexOfTroop = 0; indexOfTroop < ____count; ++indexOfTroop)
+                    if (___data[indexOfTroop].Character.Name.Equals(character.Name))
                     {
-                        var indexOfTroop = __instance.MemberRosters[(int)command.RosterSide].FindIndexOfTroop(troop);
-                        var roster = __instance.MemberRosters[(int)command.RosterSide];
-                        var elementCopyAtIndex = roster.GetElementCopyAtIndex(indexOfTroop).AllSimilar(roster);
-                        //var elementCopyAtIndex = __instance.MemberRosters[(int)command.RosterSide].GetElementCopyAtIndex(indexOfTroop);
-                        var num1 = troop.UpgradeTargets.Length != 0 ? troop.UpgradeTargets.Max(x => Campaign.Current.Models.PartyTroopUpgradeModel.GetXpCostForUpgrade(PartyBase.MainParty, troop, x)) : 0;
-                        int xpAmount;
-                        if (command.RosterSide == PartyScreenLogic.PartyRosterSide.Right)
-                        {
-                            var num2 = (elementCopyAtIndex.GetValueOrDefault().Number - command.TotalNumber) * num1;
-                            xpAmount = elementCopyAtIndex.GetValueOrDefault().Xp < num2 || num2 < 0 ? 0 : elementCopyAtIndex.GetValueOrDefault().Xp - num2;
-                        }
-                        else
-                        {
-                            var num3 = command.TotalNumber * num1;
-                            xpAmount = elementCopyAtIndex.GetValueOrDefault().Xp <= num3 || num3 < 0 ? elementCopyAtIndex.GetValueOrDefault().Xp : num3;
-                            __instance.MemberRosters[(int)command.RosterSide].AddXpToTroop(-xpAmount, troop);
-                        }
-        
-                        var otherRoster = __instance.MemberRosters[(int)(1 - command.RosterSide)];
-                        // iterate through the roster and operate n times
-                        for (var n = 0; n < command.TotalNumber; n++)
-                        {
-                            // find troop again
-                            var troop1 = troop;
-                            var foo = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.Equals(troop1.Name)).Character;
-                            //if (troop is null)
-                            //    break;
-                            indexOfTroop = roster.FindIndexOfTroop(troop);
-                            roster.AddToCounts(troop, -1, woundedCount: 0, removeDepleted: false, index: indexOfTroop);
-                            otherRoster.AddToCounts(troop, 1, woundedCount: 0, removeDepleted: false, index: command.Index);
-                            otherRoster.AddXpToTroop(xpAmount, troop);
-                        }
-        
-                        for (var n = 0; n < command.WoundedNumber; n++)
-                        {
-                            // find troop again
-                            troop = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.Equals(troop.Name)).Character;
-                            if (troop is null)
-                                break;
-                            indexOfTroop = roster.FindIndexOfTroop(troop);
-                            roster.AddToCounts(troop, 0, woundedCount: -1, removeDepleted: false, index: indexOfTroop);
-                            otherRoster.AddToCounts(troop, 0, woundedCount: 1, removeDepleted: false, index: command.Index);
-                            otherRoster.AddXpToTroop(xpAmount, troop);
-                        }
+                        __result = indexOfTroop;
+                        return;
                     }
-                    else
-                    {
-                        var indexOfTroop = __instance.PrisonerRosters[(int)command.RosterSide].FindIndexOfTroop(troop);
-                        var elementCopyAtIndex = __instance.PrisonerRosters[(int)command.RosterSide].GetElementCopyAtIndex(indexOfTroop);
-                        var toRecruitPrisoner = Campaign.Current.Models.PrisonerRecruitmentCalculationModel.GetConformityNeededToRecruitPrisoner(elementCopyAtIndex.Character);
-                        int xpAmount;
-                        if (command.RosterSide == PartyScreenLogic.PartyRosterSide.Right)
-                        {
-                            Traverse.Create(__instance).Method("UpdatePrisonerTransferHistory", troop, -command.TotalNumber).GetValue();
-                            var num = (elementCopyAtIndex.Number - command.TotalNumber) * toRecruitPrisoner;
-                            xpAmount = elementCopyAtIndex.Xp < num || num < 0 ? 0 : elementCopyAtIndex.Xp - num;
-                        }
-                        else
-                        {
-                            Traverse.Create(__instance).Method("UpdatePrisonerTransferHistory", troop, command.TotalNumber).GetValue();
-                            var num = command.TotalNumber * toRecruitPrisoner;
-                            xpAmount = elementCopyAtIndex.Xp <= num || num < 0 ? elementCopyAtIndex.Xp : num;
-                            __instance.PrisonerRosters[(int)command.RosterSide].AddXpToTroop(-xpAmount, troop);
-                        }
-        
-                        __instance.PrisonerRosters[(int)command.RosterSide].AddToCounts(troop, -command.TotalNumber, woundedCount: (-command.WoundedNumber), removeDepleted: false, index: command.Index);
-                        __instance.PrisonerRosters[(int)(1 - command.RosterSide)].AddToCounts(troop, command.TotalNumber, woundedCount: command.WoundedNumber, removeDepleted: false, index: command.Index);
-                        __instance.PrisonerRosters[(int)(1 - command.RosterSide)].AddXpToTroop(xpAmount, troop);
-                        if (__instance.CurrentData.RightRecruitableData.ContainsKey(troop))
-                            __instance.CurrentData.RightRecruitableData[troop] = MathF.Max(MathF.Min(__instance.CurrentData.RightRecruitableData[troop], __instance.PrisonerRosters[1].GetElementNumber(troop)), Campaign.Current.Models.PrisonerRecruitmentCalculationModel.CalculateRecruitableNumber(PartyBase.MainParty, troop));
-                    }
-        
-                    flag = true;
-                }
-        
-                if (!flag)
-                    return false;
-                if (__instance.PrisonerTransferState == PartyScreenLogic.TransferState.TransferableWithTrade && command.Type == PartyScreenLogic.TroopType.Prisoner)
-                {
-                    if (command.RosterSide == PartyScreenLogic.PartyRosterSide.Right)
-                        Traverse.Create(__instance).Method("SetPartyGoldChangeAmount", __instance.CurrentData.PartyGoldChangeAmount + Campaign.Current.Models.RansomValueCalculationModel.PrisonerRansomValue(command.Character, Hero.MainHero) * command.TotalNumber).GetValue();
-                    else
-                        Traverse.Create(__instance).Method("SetPartyGoldChangeAmount", __instance.CurrentData.PartyGoldChangeAmount - Campaign.Current.Models.RansomValueCalculationModel.PrisonerRansomValue(command.Character, Hero.MainHero) * command.TotalNumber).GetValue();
-                }
-        
-                if (PartyScreenManager.Instance.IsDonating)
-                {
-                    var currentSettlement = Hero.MainHero.CurrentSettlement;
-                    var heroInfluence = 0.0f;
-                    var troopInfluence = 0.0f;
-                    var prisonerInfluence = 0.0f;
-                    foreach (var troopTradeDifference in Traverse.Create(__instance).Field<PartyScreenData>("_initialData").Value.GetTroopTradeDifferencesFromTo(__instance.CurrentData))
-                    {
-                        var num = troopTradeDifference.FromCount - troopTradeDifference.ToCount;
-                        if (num > 0)
-                        {
-                            if (!troopTradeDifference.IsPrisoner)
-                                troopInfluence += num * Campaign.Current.Models.PrisonerDonationModel.CalculateInfluenceGainAfterTroopDonation(PartyBase.MainParty, troopTradeDifference.Troop, currentSettlement);
-                            else if (troopTradeDifference.Troop.IsHero)
-                                heroInfluence += Campaign.Current.Models.PrisonerDonationModel.CalculateInfluenceGainAfterPrisonerDonation(PartyBase.MainParty, troopTradeDifference.Troop, currentSettlement);
-                            else
-                                prisonerInfluence += num * Campaign.Current.Models.PrisonerDonationModel.CalculateInfluenceGainAfterPrisonerDonation(PartyBase.MainParty, troopTradeDifference.Troop, currentSettlement);
-                        }
-                    }
-        
-                    Traverse.Create(__instance).Method("SetInfluenceChangeAmount", ((int)heroInfluence, (int)troopInfluence, (int)prisonerInfluence)).GetValue();
-                }
-        
-                var updateDelegate = __instance.UpdateDelegate;
-                updateDelegate?.Invoke(command);
-                var update = Traverse.Create(__instance).Field<PartyScreenLogic.PresentationUpdate>("Update").Value;
-                update?.Invoke(command);
-                return false;
+
+                __result = -1;
             }
         }
-        
-        // when the index isn't found, search by name
-        [HarmonyPatch(typeof(PartyVM), "TransferTroop")]
-        public class PartyVMTransferTroop
-        {
-            private static FieldInfo MemberRosters = AccessTools.Field(typeof(PartyScreenLogic), nameof(PartyScreenLogic.MemberRosters));
-        
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-            {
-                var codes = instructions.ToList();
-                var target = -1;
-                for (var i = 0; i < codes.Count; i++)
-                {
-                    if (codes[i].opcode == OpCodes.Ldarg_0
-                        && codes[i + 1].opcode == OpCodes.Call
-                        && codes[i + 2].opcode == OpCodes.Ldfld && (FieldInfo)codes[i + 2].operand == MemberRosters
-                        && codes[i + 3].opcode == OpCodes.Ldarg_1
-                        && codes[i + 4].opcode == OpCodes.Callvirt
-                        && codes[i + 5].opcode == OpCodes.Ldelem_Ref
-                        && codes[i + 6].opcode == OpCodes.Stloc_S)
-                        target = i;
-                }
-        
-                // swap index2 for a checked one
-                var stack = new CodeInstruction[]
-                {
-                    new(OpCodes.Ldloc_S, 5),
-                    new(OpCodes.Ldloc_0), // index1
-                    new(OpCodes.Ldarg_0),
-                    new(OpCodes.Call, AccessTools.Method(typeof(PartyVMTransferTroop), nameof(FixIndex))),
-                    new(OpCodes.Stloc_S, 5)
-                };
-                codes.InsertRange(target, stack);
-                return codes.AsEnumerable();
-            }
-        
-            private static int FixIndex(int index2, PartyScreenLogic.PartyRosterSide index1, PartyVM partyVM)
-            {
-                if (index2 >= 0)
-                    return index2;
-                var troop = partyVM.PartyScreenLogic.MemberRosters[(int)index1].GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.Equals(partyVM.CurrentCharacter.Character.Name));
-                var result = -1;
-                if (troop.Character is not null)
-                    result = partyVM.PartyScreenLogic.MemberRosters[(int)index1].FindIndexOfTroop(troop.Character);
-                return result;
-            }
-        }
-        
-        
-        [HarmonyPatch(typeof(PartyTradeVM), "FindTroopFromSide")]
-        public class PartyTradeVMFindTroopsFromSidePatch
-        {
-            private static void Postfix(CharacterObject character, PartyScreenLogic.PartyRosterSide side, PartyScreenLogic ____partyScreenLogic, ref TroopRosterElement? __result)
-            {
-                var roster = ____partyScreenLogic.MemberRosters[(int)side];
-                __result = (roster?.GetTroopRoster().FirstOrDefaultQ(e => e.Character == character))?.AllSimilar(roster);
-            }
-        }
-        
+
+        // facilitates the widgets updating the displayed numbers
         [HarmonyPatch(typeof(PartyTradeVM), "UpdateTroopData")]
         public class PartyTradeVMUpdateTroopData
         {
@@ -520,59 +355,6 @@ namespace UniqueTroopsGoneWild
                 var element = troopRoster.AllSimilar(roster).GetValueOrDefault();
                 troopRoster.Number = element.Number;
                 troopRoster.WoundedNumber = element.WoundedNumber;
-            }
-        }
-        
-        //
-        [HarmonyPatch(typeof(PartyVM), "GetNumberOfHealthyTroopNumberForSide")]
-        public class PartyVMGetNumberOfHealthyTroopNumberForSide
-        {
-            public static bool Prefix(PartyVM __instance, CharacterObject character,
-                PartyScreenLogic.PartyRosterSide fromSide,
-                bool isPrisoner,
-                ref int __result)
-            {
-                var characterVm = (PartyCharacterVM)Traverse.Create(__instance).Method("FindCharacterVM", character, fromSide, isPrisoner).GetValue();
-                var troop = characterVm.Troop.AllSimilar(__instance.PartyScreenLogic.MemberRosters[(int)fromSide]);
-                var number = troop?.Number;
-                troop = characterVm.Troop;
-                var woundedNumber = troop?.WoundedNumber;
-                __result = number!.Value - woundedNumber.Value;
-                return false;
-            }
-        }
-
-        [HarmonyPatch(typeof(PartyVM), "UpdateTroopManagerPopUpCounts")]
-        public class PartyVMUpdateTroopManagerPopUpCounts
-        {
-            public static bool Prefix(PartyVM __instance)
-            {
-                if (__instance.UpgradePopUp.IsOpen || __instance.RecruitPopUp.IsOpen)
-                    return false;
-                __instance.RecruitableTroopCount = 0;
-                __instance.UpgradableTroopCount = 0;
-        
-                __instance.MainPartyPrisoners.ApplyActionOnAllItems(x =>
-                {
-                    // ReSharper disable once PossibleInvalidOperationException
-                    // RecruitableTroopCount +=  summed amount for type
-                    var count = x.Troop.AllSimilar(__instance.PartyScreenLogic.PrisonerRosters[(int)x.Side]).Value.Number;
-                    __instance.RecruitableTroopCount += count;
-                    Log.Debug?.Log($"Prisoners: {x.Troop.Character.Name} {count} = {__instance.RecruitableTroopCount}");
-                });
-                //__instance.MainPartyPrisoners.ApplyActionOnAllItems(x => __instance.RecruitableTroopCount += x.NumOfRecruitablePrisoners);
-                __instance.MainPartyTroops.ApplyActionOnAllItems(x =>
-                {
-                    // ReSharper disable once PossibleInvalidOperationException
-                    var count = x.Troop.AllSimilar(__instance.PartyScreenLogic.MemberRosters[(int)x.Side]).Value.Number;
-                    __instance.UpgradableTroopCount += count;
-                    Log.Debug?.Log($"Members: {x.Troop.Character.Name} {count} = {__instance.UpgradableTroopCount}");
-                });
-                __instance.IsRecruitPopUpDisabled = !__instance.ArePrisonersRelevantOnCurrentMode || __instance.RecruitableTroopCount == 0 || __instance.PartyScreenLogic.IsTroopUpgradesDisabled;
-                __instance.IsUpgradePopUpDisabled = !__instance.AreMembersRelevantOnCurrentMode || __instance.UpgradableTroopCount == 0 || __instance.PartyScreenLogic.IsTroopUpgradesDisabled;
-                __instance.RecruitPopUp.UpdateOpenButtonHint(__instance.IsRecruitPopUpDisabled, !__instance.ArePrisonersRelevantOnCurrentMode, __instance.PartyScreenLogic.IsTroopUpgradesDisabled);
-                __instance.UpgradePopUp.UpdateOpenButtonHint(__instance.IsUpgradePopUpDisabled, !__instance.AreMembersRelevantOnCurrentMode, __instance.PartyScreenLogic.IsTroopUpgradesDisabled);
-                return false;
             }
         }
 
