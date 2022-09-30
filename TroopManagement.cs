@@ -48,9 +48,17 @@ namespace UniqueTroopsGoneWild
         {
             public static void Prefix(MobileParty sellerParty, TroopRoster prisoners)
             {
-                foreach (var element in sellerParty.PrisonRoster.GetTroopRoster())
-                    if (prisoners.Contains(element.Character) && Troops.ContainsQ(element.Character))
-                        Helper.RemoveTracking(element.Character, prisoners);
+                // 1.8.1 introduced ApplyForSettlementPrisoners which passes nulls
+                if (sellerParty is null)
+                {
+                    foreach (var prisoner in prisoners.GetTroopRoster())
+                        if (Troops.ContainsQ(prisoner.Character))
+                            Helper.RemoveTracking(prisoner.Character, prisoners);
+                }
+                else
+                    foreach (var element in sellerParty.PrisonRoster.GetTroopRoster())
+                        if (prisoners.Contains(element.Character) && Troops.ContainsQ(element.Character))
+                            Helper.RemoveTracking(element.Character, prisoners);
             }
         }
 
