@@ -14,6 +14,8 @@ using TaleWorlds.ModuleManager;
 using static UniqueTroopsGoneWild.Globals;
 using static UniqueTroopsGoneWild.Helper;
 
+// ReSharper disable StringLiteralTypo
+
 namespace UniqueTroopsGoneWild
 {
     public static class EquipmentUpgrading
@@ -29,6 +31,9 @@ namespace UniqueTroopsGoneWild
         public static readonly AccessTools.FieldRef<Equipment, EquipmentElement[]> ItemSlots =
             AccessTools.FieldRefAccess<Equipment, EquipmentElement[]>("_itemSlots");
 
+        private static readonly AccessTools.StructFieldRef<BodyProperties, StaticBodyProperties> StaticBodyProps =
+            AccessTools.StructFieldRefAccess<BodyProperties, StaticBodyProperties>("_staticBodyProperties");
+        
         private static MethodInfo setName;
 
         private static void LogBoth(object input)
@@ -238,7 +243,9 @@ namespace UniqueTroopsGoneWild
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
             setName ??= AccessTools.Method(typeof(CharacterObject), "SetName");
             // localization not included
-            setName.Invoke(tempCharacter, new object[] { new TextObject(@"{=BMTroops}Upgraded " + tempCharacter.Name) });
+            var bodyProps = tempCharacter.GetBodyProperties(tempCharacter.Equipment);
+            StaticBodyProps(ref bodyProps) = StaticBodyProperties.GetRandomStaticBodyProperties();
+            setName.Invoke(tempCharacter, new object[] { new TextObject(@"{=UTGWTroop}Upgraded " + tempCharacter.Name) });
             IsSoldier(tempCharacter) = true;
             HiddenInEncyclopedia(tempCharacter) = true;
             var mbEquipmentRoster = new MBEquipmentRoster();
