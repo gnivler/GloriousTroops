@@ -64,7 +64,11 @@ namespace UniqueTroopsGoneWild
                     return;
                 //Log.Debug?.Log($"Rehydrating {troop.OriginalCharacter.Name} - {troop.StringId}");
                 troop.InitializeHeroCharacterOnAfterLoad();
-                basicName(troop) = new TextObject(@"{=BMTroops}Upgraded " + troop.OriginalCharacter.Name);
+                var mbEquipmentRoster = new MBEquipmentRoster();
+                Equipments(mbEquipmentRoster) = new List<Equipment> { new(troop.Equipment) };
+                EquipmentRoster(troop) = mbEquipmentRoster;
+                troop.Age = troop.OriginalCharacter.Age;
+                basicName(troop) = new TextObject(@"{=UTGWTroop}Upgraded " + troop.OriginalCharacter.Name);
                 HiddenInEncyclopedia(troop) = true;
                 MBObjectManager.Instance.RegisterObject(troop);
                 Troops.Add(troop);
