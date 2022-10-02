@@ -3,16 +3,22 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using HarmonyLib;
+using Messages.FromLobbyServer.ToClient;
+using SandBox.GauntletUI;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.GameMenus;
 using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.CampaignSystem.Party.PartyComponents;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.CampaignSystem.Settlements;
+using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
+using TaleWorlds.MountAndBlade;
 using TaleWorlds.ObjectSystem;
+using TaleWorlds.ScreenSystem;
 using static UniqueTroopsGoneWild.Globals;
 
 // ReSharper disable InconsistentNaming  
@@ -57,10 +63,10 @@ namespace UniqueTroopsGoneWild
         {
             var methodInfos = new[]
             {
-                AccessTools.Method("WarPartyComponent:OnFinalize"),
+                AccessTools.Method(typeof(WarPartyComponent), "OnFinalize"),
             };
 
-            var finalizer = AccessTools.Method("MiscPatches:Finalizer");
+            var finalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.Finalizer));
             foreach (var method in methodInfos)
                 if (apply)
                     SubModule.harmony.Patch(method, finalizer: new HarmonyMethod(finalizer));
