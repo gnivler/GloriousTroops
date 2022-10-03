@@ -417,6 +417,27 @@ namespace UniqueTroopsGoneWild
             }
         }
 
+        // hideout crashes
+        // the scoreboard rollup shows one but the game tries to remove each CO, crashing here
+        // it doesn't matter if it's ignored
+        [HarmonyPatch(typeof(SPScoreboardSideVM), "RemoveTroop")]
+        public class SPScoreboardSideVMRemoveTroop
+        {
+            public static Exception Finalizer() => null;
+        }
+        
+        [HarmonyPatch(typeof(SPScoreboardSideVM), "AddTroop")]
+        public class SPScoreboardSideVMAddTroop
+        {
+            public static Exception Finalizer() => null;
+        }
+
+        [HarmonyPatch(typeof(SPScoreboardPartyVM), "AddUnit")]
+        public class SPScoreboardPartyVMAddUnit
+        {
+            public static Exception Finalizer() => null;
+        }
+
         internal static Exception Finalizer() => null;
     }
 }

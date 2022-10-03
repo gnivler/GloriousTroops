@@ -92,7 +92,7 @@ namespace UniqueTroopsGoneWild
             if (superKey && Input.IsKeyPressed(InputKey.T))
                 Helper.Nuke();
 
-            if (Environment.MachineName == "MEOWMEOW" && Input.IsKeyPressed(InputKey.Tilde))
+            if (MEOWMEOW && Input.IsKeyPressed(InputKey.Tilde))
                 Helper.CheckTracking();
         }
     }
