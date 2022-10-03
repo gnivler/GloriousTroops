@@ -67,13 +67,20 @@
 
     <ItemGroup>
       <Compile Remove="UniqueTroopsGoneWildUnitTests\**" />
+      <Compile Remove="packages\**" />
     </ItemGroup>
 
     <ItemGroup>
       <EmbeddedResource Remove="UniqueTroopsGoneWildUnitTests\**" />
+      <EmbeddedResource Remove="packages\**" />
     </ItemGroup>
 
     <ItemGroup>
       <None Remove="UniqueTroopsGoneWildUnitTests\**" />
+      <None Remove="packages\**" />
     </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Exec Command="xcopy /y &quot;$(TargetDir)&quot;UniqueTroopsGoneWild.??? &quot;M:\SteamLibrary\steamapps\common\Mount %26 Blade II Bannerlord\Modules\UniqueTroopsGoneWild\bin\Win64_Shipping_Client&quot;" />
+    </Target>
 </Project>
