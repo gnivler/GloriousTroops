@@ -33,13 +33,16 @@ namespace UniqueTroopsGoneWild
         [SettingPropertyBool("Maintain Culture", HintText = "Troops won't loot equipment from other cultures.", Order = 2, RequireRestart = false)]
         public bool MaintainCulture { get; set; } = false;
 
-        [SettingPropertyInteger("Drop Percent", 1, 100, HintText = "How likely each item is to become lootable.", Order = 3, RequireRestart = false)]
+        [SettingPropertyBool("Maintain Weapon Type", HintText = "Troops will only replace their main weapons with the same type (blunt/slashing/piercing).", Order = 3, RequireRestart = false)]
+        public bool MaintainType { get; set; } = false;
+
+        [SettingPropertyInteger("Drop Percent", 1, 100, HintText = "How likely each item is to become lootable.", Order = 4, RequireRestart = false)]
         public int DropPercent { get; set; } = 66;
 
-        [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 4, RequireRestart = false)]
+        [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 5, RequireRestart = false)]
         public int MinLootValue { get; set; } = 1000;
 
-        [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 5, RequireRestart = false)]
+        [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 6, RequireRestart = false)]
         public bool Debug { get; set; } = false;
     }
 }

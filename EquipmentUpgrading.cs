@@ -33,7 +33,7 @@ namespace UniqueTroopsGoneWild
 
         private static readonly AccessTools.StructFieldRef<BodyProperties, StaticBodyProperties> StaticBodyProps =
             AccessTools.StructFieldRefAccess<BodyProperties, StaticBodyProperties>("_staticBodyProperties");
-        
+
         private static MethodInfo setName;
 
         private static void LogBoth(object input)
@@ -193,6 +193,16 @@ namespace UniqueTroopsGoneWild
             if (targetSlot < 0)
                 return;
             var replacedItem = troopRosterElement.Character.Equipment[targetSlot];
+            if (Globals.Settings.MaintainType && replacedItem.Item?.WeaponComponent is { } replacedWeapon)
+            {
+                if (replacedWeapon.PrimaryWeapon.SwingDamageType != possibleUpgrade.EquipmentElement.Item.WeaponComponent?.PrimaryWeapon.SwingDamageType
+                    || replacedWeapon.PrimaryWeapon.ThrustDamageType != possibleUpgrade.EquipmentElement.Item.WeaponComponent?.PrimaryWeapon.ThrustDamageType)
+                {
+                    LogBoth($"{troopRosterElement.Character.Name} passing on {possibleUpgrade.EquipmentElement.Item.Name} being different type from {replacedItem.Item.Name}");
+                    return;
+                }
+            }
+
             if (replacedItem.Value() >= possibleUpgrade.EquipmentElement.Value())
                 return;
             // allow a better shield
