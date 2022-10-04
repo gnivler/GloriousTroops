@@ -16,6 +16,7 @@ namespace UniqueTroopsGoneWild
     public class SubModule : MBSubModuleBase
     {
         internal static Harmony harmony;
+        internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
 
         protected override void OnSubModuleLoad()
         {
@@ -70,9 +71,17 @@ namespace UniqueTroopsGoneWild
             if (Globals.Settings!.Debug)
                 Globals.Log.Restart();
             Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
+            var original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
+            var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossBattlePrefix));
+            harmony.Patch(original, prefix: new HarmonyMethod(prefix));
             var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
-            harmony.Patch(ctor, transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
+            if (MEOWMEOW)
+            {
+                harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Postfix)),
+                    transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
+            }
         }
+
 
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
         {
