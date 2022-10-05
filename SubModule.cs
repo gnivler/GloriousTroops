@@ -2,25 +2,32 @@
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using SandBox.GauntletUI;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.ScreenSystem;
 
 // ReSharper disable ClassNeverInstantiated.Global  
 // ReSharper disable InconsistentNaming
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
     public class SubModule : MBSubModuleBase
     {
         internal static Harmony harmony;
         internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
 
+        private static readonly AccessTools.FieldRef<PartyVM, PartyCharacterVM> currentCharacter =
+            AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
+
+        internal static readonly FieldInfo dataSource = AccessTools.Field(typeof(GauntletPartyScreen), "_dataSource");
+
         protected override void OnSubModuleLoad()
         {
-            harmony = new Harmony("ca.gnivler.bannerlord.UniqueTroopsGoneWild");
+            harmony = new Harmony("ca.gnivler.bannerlord.GloriousTroops");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
             base.OnSubModuleLoad();
         }
@@ -57,6 +64,9 @@ namespace UniqueTroopsGoneWild
             replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyPrisonerReplacement));
             harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
+            original = AccessTools.Method("DefaultPartyWageModel:GetTotalWage");
+            var updateFinalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateFinalizer));
+            harmony.Patch(original, finalizer: new HarmonyMethod(updateFinalizer));
             if (Environment.MachineName == "MEOWMEOW")
             {
                 CampaignCheats.SetCampaignSpeed(new List<string> { "100" });
@@ -72,7 +82,7 @@ namespace UniqueTroopsGoneWild
                 Globals.Log.Restart();
             Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
             var original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
-            var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossBattlePrefix));
+            var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
             harmony.Patch(original, prefix: new HarmonyMethod(prefix));
             var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
             if (MEOWMEOW)
@@ -82,13 +92,17 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
         {
             base.OnGameStart(game, gameStarterObject);
             if (gameStarterObject is CampaignGameStarter gameStarter)
-                gameStarter.AddBehavior(new UniqueTroopsBehavior());
+                gameStarter.AddBehavior(new GloriousTroopsBehavior());
+            EquipmentUpgrading.InitSkills();
+            EquipmentUpgrading.SetName = AccessTools.Method(typeof(CharacterObject), "SetName");
         }
+
+        //private static List<FlattenedTroopRosterElement> uniqueTroops;
+        //private static int troopIndex;
 
         protected override void OnApplicationTick(float dt)
         {
@@ -98,8 +112,38 @@ namespace UniqueTroopsGoneWild
                            && (Input.IsKeyDown(InputKey.LeftAlt) || Input.IsKeyDown(InputKey.RightAlt))
                            && (Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift));
 
+            if (ScreenManager.TopScreen is GauntletPartyScreen screen
+                && Input.IsKeyPressed(InputKey.Space))
+            {
+                try
+                {
+                    var partyVM = (PartyVM)dataSource.GetValue(screen);
+                    var troop = currentCharacter(partyVM);
+                    if (troop is null)
+                        return;
+
+                    //this.CurrentCharacter.Side TODO use this member instead of First
+                    //var inRoster = partyVM.PartyScreenLogic.MemberRosters.First(r => r.Contains(troop.Character));
+                    //uniqueTroops = inRoster.ToFlattenedRoster().WhereQ(e => e.Troop.Name.Equals(troop.Character.Name)).ToListQ();
+                    //troopIndex = uniqueTroops.FindIndexQ(e => e.Troop.StringId == troop.Character.StringId);
+                    //var nextIndex = troopIndex + 1 > uniqueTroops.Count ? 0 : troopIndex + 1;
+                    //if (!troop.IsHero && troop.Character.OriginalCharacter is not null)
+                    //{
+                    //    var element = currentCharacter(partyVM).Troop;
+                    //    element.Character = uniqueTroops[nextIndex].Troop;
+                    //    currentCharacter(partyVM).Troop = element;
+                    //    Traverse.Create(partyVM).Method("RefreshCurrentCharacterInformation").GetValue();
+                    //    Globals.Log.Debug?.Log(troop.Name);
+                    //}
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+
             if (superKey && Input.IsKeyPressed(InputKey.T))
-                Helper.Nuke();
+                Helper.Restore();
 
             if (MEOWMEOW && Input.IsKeyPressed(InputKey.Tilde))
                 Helper.CheckTracking();
