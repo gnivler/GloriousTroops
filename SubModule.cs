@@ -24,6 +24,7 @@ namespace GloriousTroops
             AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
 
         internal static readonly FieldInfo dataSource = AccessTools.Field(typeof(GauntletPartyScreen), "_dataSource");
+        private static bool IsPatched;
 
         protected override void OnSubModuleLoad()
         {
@@ -35,39 +36,57 @@ namespace GloriousTroops
         public override void OnGameInitializationFinished(Game game)
         {
             base.OnGameInitializationFinished(game);
-            var propertyBasedTooltipVMExtensions = AccessTools.TypeByName("PropertyBasedTooltipVMExtensions");
 
-            var displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass16_0");
-            var original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
-            var replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipPartyMemberReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+            if (!IsPatched)
+            {
+                var propertyBasedTooltipVMExtensions = AccessTools.TypeByName("PropertyBasedTooltipVMExtensions");
+                var displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass16_0");
+                var original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
+                var replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipPartyMemberReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
-            replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipPartyPrisonerReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+                original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
+                replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipPartyPrisonerReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass15_0");
-            original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
-            replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipSettlementMemberReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+                displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass15_0");
+                original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
+                replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipSettlementMemberReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
-            replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipSettlementPrisonerReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+                original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
+                replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipSettlementPrisonerReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass17_0");
-            original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
-            replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyMemberReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+                displayClass = AccessTools.Inner(propertyBasedTooltipVMExtensions, "<>c__DisplayClass17_0");
+                original = displayClass.GetMethod("<UpdateTooltip>b__0", AccessTools.all);
+                replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyMemberReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
-            replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyPrisonerReplacement));
-            harmony.Patch(original, prefix: new HarmonyMethod(replacement));
+                original = displayClass.GetMethod("<UpdateTooltip>b__1", AccessTools.all);
+                replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyPrisonerReplacement));
+                harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-            original = AccessTools.Method("DefaultPartyWageModel:GetTotalWage");
-            var updateFinalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateFinalizer));
-            harmony.Patch(original, finalizer: new HarmonyMethod(updateFinalizer));
-            if (Environment.MachineName == "MEOWMEOW")
+                original = AccessTools.Method("DefaultPartyWageModel:GetTotalWage");
+                var updateFinalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateFinalizer));
+                harmony.Patch(original, finalizer: new HarmonyMethod(updateFinalizer));
+
+                original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
+                var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
+                harmony.Patch(original, prefix: new HarmonyMethod(prefix));
+                var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
+                if (MEOWMEOW)
+                {
+                    harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Postfix)),
+                        transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
+                }
+
+                IsPatched = true;
+            }
+
+            EquipmentUpgrading.InitSkills();
+            EquipmentUpgrading.SetName = AccessTools.Method(typeof(CharacterObject), "SetName");
+            if (MEOWMEOW)
             {
                 CampaignCheats.SetCampaignSpeed(new List<string> { "100" });
                 CampaignCheats.SetMainPartyAttackable(new List<string> { "0" });
@@ -81,15 +100,6 @@ namespace GloriousTroops
             if (Globals.Settings!.Debug)
                 Globals.Log.Restart();
             Globals.Log.Debug?.Log($"{Globals.Settings?.DisplayName} starting up...");
-            var original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
-            var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
-            harmony.Patch(original, prefix: new HarmonyMethod(prefix));
-            var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
-            if (MEOWMEOW)
-            {
-                harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Postfix)),
-                    transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
-            }
         }
 
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
@@ -97,12 +107,7 @@ namespace GloriousTroops
             base.OnGameStart(game, gameStarterObject);
             if (gameStarterObject is CampaignGameStarter gameStarter)
                 gameStarter.AddBehavior(new GloriousTroopsBehavior());
-            EquipmentUpgrading.InitSkills();
-            EquipmentUpgrading.SetName = AccessTools.Method(typeof(CharacterObject), "SetName");
         }
-
-        //private static List<FlattenedTroopRosterElement> uniqueTroops;
-        //private static int troopIndex;
 
         protected override void OnApplicationTick(float dt)
         {
