@@ -38,6 +38,9 @@ namespace GloriousTroops
         internal static readonly AccessTools.FieldRef<BasicCharacterObject, MBCharacterSkills> CharacterSkills =
             AccessTools.FieldRefAccess<BasicCharacterObject, MBCharacterSkills>("CharacterSkills");
 
+        private static readonly AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> Attributes =
+            AccessTools.FieldRefAccess<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>>("_attributes");
+
         internal static MethodInfo SetName;
         private static SkillObject oneHanded;
         private static SkillObject twoHanded;
@@ -316,16 +319,13 @@ namespace GloriousTroops
             }
         }
 
-        static AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> attributes =
-            AccessTools.FieldRefAccess<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>>("_attributes");
-
-        public static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
+        private static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
         {
             var tempCharacter = CharacterObject.CreateFrom(troop.Character);
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
             // have to create a new MBCharacterSkills or every similar BCO picks up changes
             CharacterSkills(tempCharacter) = new MBCharacterSkills();
-            attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(attributes(CharacterSkills(troop.Character).Skills));
+            Attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(Attributes(CharacterSkills(troop.Character).Skills));
             var bodyProps = tempCharacter.GetBodyProperties(tempCharacter.Equipment);
             StaticBodyProps(ref bodyProps) = StaticBodyProperties.GetRandomStaticBodyProperties();
             // localization not included
@@ -338,7 +338,7 @@ namespace GloriousTroops
             return tempCharacter;
         }
 
-        public static int GetSlotOfLeastValuableOfType(ItemObject.ItemTypeEnum itemType, TroopRosterElement troopRosterElement)
+        private static int GetSlotOfLeastValuableOfType(ItemObject.ItemTypeEnum itemType, TroopRosterElement troopRosterElement)
         {
             var leastValuable = float.MaxValue;
             var leastSlot = -1;
