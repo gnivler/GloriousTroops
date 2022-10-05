@@ -9,7 +9,7 @@ using TaleWorlds.ModuleManager;
 
 // ReSharper disable InconsistentNaming
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
     public struct Globals
     {
@@ -17,9 +17,10 @@ namespace UniqueTroopsGoneWild
         internal static List<CharacterObject> Troops = new();
         internal static readonly Dictionary<PartyBase, List<EquipmentElement>> LootRecord = new();
         internal static Dictionary<string, Equipment> EquipmentMap = new();
+        internal static Dictionary<string, CharacterSkills> SkillsMap = new();
 
         // misc
-        internal static DeferringLogger Log = new(Path.Combine(ModuleHelper.GetModuleFullPath("UniqueTroopsGoneWild"), "log.txt"));
+        internal static DeferringLogger Log = new(Path.Combine(ModuleHelper.GetModuleFullPath("GloriousTroops"), "log.txt"));
         internal static Settings Settings;
         internal static Random Rng = new();
         internal static readonly Stopwatch T = new();
