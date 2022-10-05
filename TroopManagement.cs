@@ -12,7 +12,7 @@ using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.Core;
 using TaleWorlds.LinQuick;
-using static UniqueTroopsGoneWild.Globals;
+using static GloriousTroops.Globals;
 
 // ReSharper disable RedundantAssignment 
 // ReSharper disable InconsistentNaming  
@@ -20,7 +20,7 @@ using static UniqueTroopsGoneWild.Globals;
 // ReSharper disable UnusedType.Global
 // ReSharper disable UnusedMember.Global
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 
 {
     public static class TroopManagement
@@ -137,7 +137,7 @@ namespace UniqueTroopsGoneWild
             }
         }
 
-        // check if an Upgraded troop is being .. upgraded to a new type, and put up their gear for others to take
+        // check if a Glorious troop is being upgraded to a new type, and put up their gear for others to take
         // place a new call to the helper
         [HarmonyPatch(typeof(PartyUpgraderCampaignBehavior), "UpgradeTroop")]
         public static class PartyUpgraderCampaignBehaviorUpgradeTroop
