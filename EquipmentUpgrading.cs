@@ -11,17 +11,18 @@ using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
 using TaleWorlds.Localization;
 using TaleWorlds.ModuleManager;
-using static UniqueTroopsGoneWild.Globals;
-using static UniqueTroopsGoneWild.Helper;
+using TaleWorlds.ObjectSystem;
+using static GloriousTroops.Globals;
+using static GloriousTroops.Helper;
 
 // ReSharper disable StringLiteralTypo
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
     public static class EquipmentUpgrading
     {
         private static readonly string[] BadLoot = { "" };
-        private static readonly string FightLogName = ModuleHelper.GetModuleFullPath("UniqueTroopsGoneWild") + @"\FightLog.txt";
+        private static readonly string FightLogName = ModuleHelper.GetModuleFullPath("GloriousTroops") + @"\FightLog.txt";
         private static readonly DeferringLogger FightLog = new(FightLogName);
         private const int NumWeaponSlots = 4;
 
@@ -34,7 +35,30 @@ namespace UniqueTroopsGoneWild
         private static readonly AccessTools.StructFieldRef<BodyProperties, StaticBodyProperties> StaticBodyProps =
             AccessTools.StructFieldRefAccess<BodyProperties, StaticBodyProperties>("_staticBodyProperties");
 
-        private static MethodInfo setName;
+        internal static readonly AccessTools.FieldRef<BasicCharacterObject, MBCharacterSkills> CharacterSkills =
+            AccessTools.FieldRefAccess<BasicCharacterObject, MBCharacterSkills>("CharacterSkills");
+
+        internal static MethodInfo SetName;
+        private static SkillObject oneHanded;
+        private static SkillObject twoHanded;
+        private static SkillObject polearm;
+        private static SkillObject throwing;
+        private static SkillObject crossbow;
+        private static SkillObject bow;
+        private static SkillObject athletics;
+        private static SkillObject riding;
+
+        internal static void InitSkills()
+        {
+            oneHanded = MBObjectManager.Instance.GetObject<SkillObject>("OneHanded");
+            twoHanded = MBObjectManager.Instance.GetObject<SkillObject>("TwoHanded");
+            polearm = MBObjectManager.Instance.GetObject<SkillObject>("Polearm");
+            throwing = MBObjectManager.Instance.GetObject<SkillObject>("Throwing");
+            crossbow = MBObjectManager.Instance.GetObject<SkillObject>("Crossbow");
+            bow = MBObjectManager.Instance.GetObject<SkillObject>("Bow");
+            athletics = MBObjectManager.Instance.GetObject<SkillObject>("Athletics");
+            riding = MBObjectManager.Instance.GetObject<SkillObject>("Riding");
+        }
 
         private static void LogBoth(object input)
         {
@@ -167,6 +191,7 @@ namespace UniqueTroopsGoneWild
                 {
                     Troops.Add(troop);
                     EquipmentMap.Add(troop.StringId, troop.Equipment);
+                    SkillsMap.Add(troop.StringId, GloriousTroopsBehavior.Skills(CharacterSkills(troop)));
                     party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
                     if (party.MemberRoster.Contains(troop.OriginalCharacter))
                         party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
@@ -174,6 +199,7 @@ namespace UniqueTroopsGoneWild
                 else
                 {
                     EquipmentMap[troop.StringId] = troop.Equipment;
+                    SkillsMap[troop.StringId] = GloriousTroopsBehavior.Skills(CharacterSkills(troop));
                 }
             }
             catch (Exception ex)
@@ -220,6 +246,49 @@ namespace UniqueTroopsGoneWild
                 // assign the upgrade
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
+
+                // skill up the troop
+                switch (possibleUpgrade.EquipmentElement.Item?.ItemType)
+                {
+                    case ItemObject.ItemTypeEnum.Horse:
+                    case ItemObject.ItemTypeEnum.HorseHarness:
+                        CharacterSkills(troop).Skills.SetPropertyValue(riding, troop.GetSkillValue(riding) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.OneHandedWeapon:
+                        CharacterSkills(troop).Skills.SetPropertyValue(oneHanded, troop.GetSkillValue(oneHanded) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.TwoHandedWeapon:
+                        CharacterSkills(troop).Skills.SetPropertyValue(twoHanded, troop.GetSkillValue(twoHanded) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Polearm:
+                        CharacterSkills(troop).Skills.SetPropertyValue(polearm, troop.GetSkillValue(polearm) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Arrows:
+                        CharacterSkills(troop).Skills.SetPropertyValue(bow, troop.GetSkillValue(bow) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Bolts:
+                        CharacterSkills(troop).Skills.SetPropertyValue(crossbow, troop.GetSkillValue(crossbow) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Bow:
+                        CharacterSkills(troop).Skills.SetPropertyValue(bow, troop.GetSkillValue(bow) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Crossbow:
+                        CharacterSkills(troop).Skills.SetPropertyValue(crossbow, troop.GetSkillValue(crossbow) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Thrown:
+                        CharacterSkills(troop).Skills.SetPropertyValue(throwing, troop.GetSkillValue(throwing) + Globals.Settings.SkillBuffAmount);
+                        break;
+                    case ItemObject.ItemTypeEnum.Shield:
+                    case ItemObject.ItemTypeEnum.HeadArmor:
+                    case ItemObject.ItemTypeEnum.BodyArmor:
+                    case ItemObject.ItemTypeEnum.LegArmor:
+                    case ItemObject.ItemTypeEnum.HandArmor:
+                    case ItemObject.ItemTypeEnum.ChestArmor:
+                    case ItemObject.ItemTypeEnum.Cape:
+                        CharacterSkills(troop).Skills.SetPropertyValue(athletics, troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount);
+                        break;
+                }
+
                 // put anything replaced back into the pile
                 if (!replacedItem.IsEmpty && replacedItem.Value() >= (Globals.Settings?.MinLootValue ?? 1000))
                 {
@@ -247,21 +316,25 @@ namespace UniqueTroopsGoneWild
             }
         }
 
+        static AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> attributes =
+            AccessTools.FieldRefAccess<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>>("_attributes");
+
         public static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
         {
             var tempCharacter = CharacterObject.CreateFrom(troop.Character);
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
-            setName ??= AccessTools.Method(typeof(CharacterObject), "SetName");
-            // localization not included
+            // have to create a new MBCharacterSkills or every similar BCO picks up changes
+            CharacterSkills(tempCharacter) = new MBCharacterSkills();
+            attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(attributes(CharacterSkills(troop.Character).Skills));
             var bodyProps = tempCharacter.GetBodyProperties(tempCharacter.Equipment);
             StaticBodyProps(ref bodyProps) = StaticBodyProperties.GetRandomStaticBodyProperties();
-            setName.Invoke(tempCharacter, new object[] { new TextObject(@"{=UTGWTroop}Upgraded " + tempCharacter.Name) });
+            // localization not included
+            SetName.Invoke(tempCharacter, new object[] { new TextObject(@"{=GTTroop}Glorious " + tempCharacter.Name) });
             IsSoldier(tempCharacter) = true;
             HiddenInEncyclopedia(tempCharacter) = true;
             var mbEquipmentRoster = new MBEquipmentRoster();
             Equipments(mbEquipmentRoster) = new List<Equipment> { new(troop.Character.Equipment) };
             EquipmentRoster(tempCharacter) = mbEquipmentRoster;
-            //Log.Debug?.Log($"Created {tempCharacter.Name} {tempCharacter.StringId}");
             return tempCharacter;
         }
 
