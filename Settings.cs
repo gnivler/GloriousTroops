@@ -12,14 +12,14 @@ using MCM.Abstractions.Settings.Base.Global;
 // ReSharper disable FieldCanBeMadeReadOnly.Global 
 // ReSharper disable ConvertToConstant.Global
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
     public class Settings : AttributeGlobalSettings<Settings>
     {
         public override string FormatType => "json";
-        public override string FolderName => "UniqueTroopsGoneWild";
-        private const string id = "UniqueTroopsGoneWild";
-        private string displayName = $"UniqueTroopsGoneWild {typeof(Settings).Assembly.GetName().Version.ToString(3)}";
+        public override string FolderName => "GloriousTroops";
+        private const string id = "GloriousTroops";
+        private string displayName = $"GloriousTroops {typeof(Settings).Assembly.GetName().Version.ToString(3)}";
 
         public override string Id => id;
         public override string DisplayName => displayName;
@@ -41,6 +41,9 @@ namespace UniqueTroopsGoneWild
 
         [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 5, RequireRestart = false)]
         public int MinLootValue { get; set; } = 1000;
+
+        [SettingPropertyInteger("Skill Buff Amount", 0, 100, HintText = "Single relevant skill goes up by this amount when an upgrade is obtained.", Order = 5, RequireRestart = false)]
+        public int SkillBuffAmount { get; set; } = 25;
 
         [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 6, RequireRestart = false)]
         public bool Debug { get; set; } = false;
