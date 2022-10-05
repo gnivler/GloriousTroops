@@ -6,17 +6,19 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.Core;
 using TaleWorlds.Localization;
 using TaleWorlds.ObjectSystem;
-using static UniqueTroopsGoneWild.Globals;
-using static UniqueTroopsGoneWild.Helper;
+using static GloriousTroops.Globals;
+using static GloriousTroops.Helper;
 
-// ReSharper disable InconsistentNaming
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
-    public class UniqueTroopsBehavior : CampaignBehaviorBase
+    public class GloriousTroopsBehavior : CampaignBehaviorBase
     {
-        private static readonly AccessTools.FieldRef<BasicCharacterObject, TextObject> basicName =
+        private static readonly AccessTools.FieldRef<BasicCharacterObject, TextObject> BasicName =
             AccessTools.FieldRefAccess<BasicCharacterObject, TextObject>("_basicName");
+
+        internal static readonly AccessTools.FieldRef<MBCharacterSkills, CharacterSkills> Skills =
+            AccessTools.FieldRefAccess<MBCharacterSkills, CharacterSkills>("<Skills>k__BackingField");
 
         public override void RegisterEvents()
         {
@@ -34,7 +36,7 @@ namespace UniqueTroopsGoneWild
 
         public override void SyncData(IDataStore dataStore)
         {
-            if (dataStore.IsSaving && Environment.MachineName == "MEOWMEOW")
+            if (dataStore.IsSaving && SubModule.MEOWMEOW)
             {
                 CheckTracking(out var orphaned);
                 if (orphaned.Count != 0)
@@ -45,6 +47,8 @@ namespace UniqueTroopsGoneWild
                 Troops.Clear();
             if (!dataStore.SyncData("EquipmentMap", ref EquipmentMap))
                 EquipmentMap.Clear();
+            if (!dataStore.SyncData("SkillsMap", ref SkillsMap))
+                SkillsMap.Clear();
             if (dataStore.IsLoading)
             {
                 var tempList = new List<CharacterObject>(Troops);
@@ -60,15 +64,15 @@ namespace UniqueTroopsGoneWild
         {
             try
             {
-                if (troop.OriginalCharacter == null)
+                if (troop.OriginalCharacter is null)
                     return;
-                //Log.Debug?.Log($"Rehydrating {troop.OriginalCharacter.Name} - {troop.StringId}");
                 troop.InitializeHeroCharacterOnAfterLoad();
+                Skills(EquipmentUpgrading.CharacterSkills(troop)) = SkillsMap[troop.StringId];
                 var mbEquipmentRoster = new MBEquipmentRoster();
-                Equipments(mbEquipmentRoster) = new List<Equipment> { new(troop.Equipment) };
+                Equipments(mbEquipmentRoster) = new List<Equipment> { EquipmentMap[troop.StringId] };
                 EquipmentRoster(troop) = mbEquipmentRoster;
                 troop.Age = troop.OriginalCharacter.Age;
-                basicName(troop) = new TextObject(@"{=UTGWTroop}Upgraded " + troop.OriginalCharacter.Name);
+                BasicName(troop) = new TextObject(@"{=GTTroop}Glorious " + troop.OriginalCharacter.Name);
                 HiddenInEncyclopedia(troop) = true;
                 MBObjectManager.Instance.RegisterObject(troop);
                 Troops.Add(troop);
