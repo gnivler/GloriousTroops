@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace UniqueTroopsGoneWild
+namespace GloriousTroops
 {
     // simplified from https://github.com/BattletechModders/IRBTModUtils
     internal class DeferringLogger
