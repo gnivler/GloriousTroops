@@ -57,7 +57,7 @@ namespace GloriousTroops
             }
             catch (Exception ex)
             {
-                Log.Debug?.Log(ex);
+                LogException(ex);
             }
         }
 
@@ -219,13 +219,14 @@ namespace GloriousTroops
             if (__instance.Character.IsHero || __instance.Character.OriginalCharacter is null)
                 return;
             // limited context so check both rosters
-            var roster = partyVm!.PartyScreenLogic.MemberRosters[(int)__instance.Side];
-            var prisonerRoster = partyVm.PartyScreenLogic.PrisonerRosters[(int)__instance.Side];
+            var isPrisoner = __instance.IsPrisoner;
+            var roster = isPrisoner
+                ? partyVm!.PartyScreenLogic.PrisonerRosters[(int)__instance.Side]
+                : partyVm!.PartyScreenLogic.MemberRosters[(int)__instance.Side];
             var index = FindIndexOrSimilarIndex(roster, __instance.Character);
             if (index == -1)
-                index = FindIndexOrSimilarIndex(prisonerRoster, __instance.Character);
-            if (index == -1)
                 return;
+
             var co = roster.GetElementCopyAtIndex(index);
             var element = co.GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
             if (element.Character is not null)
@@ -235,6 +236,12 @@ namespace GloriousTroops
                 __instance.TroopID = co.Character.StringId;
                 Traverse.Create(partyVm).Method("SetSelectedCharacter", __instance).GetValue();
             }
+        }
+
+        internal static void LogException(Exception ex)
+        {
+            TaleWorlds.Library.Debug.DebugManager.PrintError("GloriousTroops", ex.ToString());
+            Log.Debug?.Log(ex);
         }
     }
 }

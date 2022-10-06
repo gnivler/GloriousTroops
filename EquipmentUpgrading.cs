@@ -208,7 +208,7 @@ namespace GloriousTroops
             catch (Exception ex)
             {
                 InformationManager.DisplayMessage(new InformationMessage(ex.ToString()));
-                Log.Debug?.Log(ex);
+                LogException(ex);
             }
         }
 

@@ -81,7 +81,7 @@ namespace GloriousTroops
             }
             catch (Exception ex)
             {
-                Log.Debug?.Log(ex);
+                LogException(ex);
             }
         }
     }
