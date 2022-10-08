@@ -255,6 +255,8 @@ namespace GloriousTroops
                 string ____fiveStackShortcutkeyText,
                 string ____entireStackShortcutkeyText)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return true;
                 partyList.Clear();
                 try
                 {
@@ -301,6 +303,8 @@ namespace GloriousTroops
         {
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return instructions;
                 var codes = instructions.ToListQ();
                 int index = default;
                 for (var i = 0; i < codes.Count; i++)
@@ -343,6 +347,8 @@ namespace GloriousTroops
                 // doesn't fix the 2nd or 3rd though
                 try
                 {
+                    if (!Globals.Settings.PartyScreenChanges)
+                        return;
                     var troopName = __instance.Troop.Character.Name;
                     var firstWounded = __instance.Troops.GetTroopRoster().FirstOrDefaultQ(e =>
                         e.Character.Name.Equals(troopName) && e.WoundedNumber > 0);
@@ -364,6 +370,8 @@ namespace GloriousTroops
         {
             public static bool Prefix(PartyVM __instance, PartyCharacterVM troop, int newIndex, int transferAmount, PartyScreenLogic.PartyRosterSide fromSide)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return true;
                 try
                 {
                     if (troop.Side == PartyScreenLogic.PartyRosterSide.None || fromSide == PartyScreenLogic.PartyRosterSide.None)
@@ -449,6 +457,8 @@ namespace GloriousTroops
         {
             private static void Postfix(CharacterObject character, PartyScreenLogic.PartyRosterSide side, PartyScreenLogic ____partyScreenLogic, ref TroopRosterElement? __result)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return;
                 try
                 {
                     if (character.IsHero || character.OriginalCharacter is null)
@@ -472,6 +482,8 @@ namespace GloriousTroops
 
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator gen)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return instructions;
                 var codes = instructions.ToListQ();
                 var stack = new List<CodeInstruction>
                 {
@@ -500,6 +512,8 @@ namespace GloriousTroops
         {
             public static bool Prefix(PartyScreenLogic __instance, PartyScreenLogic.PartyCommand command, PartyScreenLogic.PresentationUpdate ___Update)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return true;
                 try
                 {
                     if (!__instance.ValidateCommand(command))
@@ -627,6 +641,8 @@ namespace GloriousTroops
             private static bool Prefix(PartyVM __instance, PartyScreenLogic.PartyCommand command,
                 PartyCharacterVM ____currentCharacter, string ____fiveStackShortcutkeyText, string ____entireStackShortcutkeyText)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return true;
                 try
                 {
                     if (!____currentCharacter.Character.IsHero && ____currentCharacter.Character.OriginalCharacter is null)
@@ -741,6 +757,8 @@ namespace GloriousTroops
         {
             public static void Postfix(ref PartyCharacterVM __instance)
             {
+                if (!Globals.Settings.PartyScreenChanges)
+                    return;
                 // the PartyCharacterVM ctor postfix places any wounded troops first so now update on transfer
                 try
                 {
@@ -848,7 +866,7 @@ namespace GloriousTroops
         [HarmonyPatch(typeof(CharacterObject), "GetSkillValue")]
         public class CharacterObjectGetSkillValue
         {
-            public static Exception Finalizer(CharacterObject __instance, SkillObject skill, Exception __exception)
+            public static Exception Finalizer(Exception __exception)
             {
                 if (__exception is not null)
                 {
