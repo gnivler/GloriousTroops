@@ -250,47 +250,9 @@ namespace GloriousTroops
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
 
+
                 // skill up the troop
-                switch (possibleUpgrade.EquipmentElement.Item?.ItemType)
-                {
-                    case ItemObject.ItemTypeEnum.Horse:
-                    case ItemObject.ItemTypeEnum.HorseHarness:
-                        CharacterSkills(troop).Skills.SetPropertyValue(riding, troop.GetSkillValue(riding) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.OneHandedWeapon:
-                        CharacterSkills(troop).Skills.SetPropertyValue(oneHanded, troop.GetSkillValue(oneHanded) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.TwoHandedWeapon:
-                        CharacterSkills(troop).Skills.SetPropertyValue(twoHanded, troop.GetSkillValue(twoHanded) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Polearm:
-                        CharacterSkills(troop).Skills.SetPropertyValue(polearm, troop.GetSkillValue(polearm) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Arrows:
-                        CharacterSkills(troop).Skills.SetPropertyValue(bow, troop.GetSkillValue(bow) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Bolts:
-                        CharacterSkills(troop).Skills.SetPropertyValue(crossbow, troop.GetSkillValue(crossbow) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Bow:
-                        CharacterSkills(troop).Skills.SetPropertyValue(bow, troop.GetSkillValue(bow) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Crossbow:
-                        CharacterSkills(troop).Skills.SetPropertyValue(crossbow, troop.GetSkillValue(crossbow) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Thrown:
-                        CharacterSkills(troop).Skills.SetPropertyValue(throwing, troop.GetSkillValue(throwing) + Globals.Settings.SkillBuffAmount);
-                        break;
-                    case ItemObject.ItemTypeEnum.Shield:
-                    case ItemObject.ItemTypeEnum.HeadArmor:
-                    case ItemObject.ItemTypeEnum.BodyArmor:
-                    case ItemObject.ItemTypeEnum.LegArmor:
-                    case ItemObject.ItemTypeEnum.HandArmor:
-                    case ItemObject.ItemTypeEnum.ChestArmor:
-                    case ItemObject.ItemTypeEnum.Cape:
-                        CharacterSkills(troop).Skills.SetPropertyValue(athletics, troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount);
-                        break;
-                }
+                SetSkillLevel(possibleUpgrade.EquipmentElement.Item, troop);
 
                 // put anything replaced back into the pile
                 if (!replacedItem.IsEmpty && replacedItem.Value() >= (Globals.Settings?.MinLootValue ?? 1000))
@@ -372,5 +334,55 @@ namespace GloriousTroops
 
             return leastSlot;
         }
+
+        private static void SetSkillLevel(ItemObject item, CharacterObject troop)
+        {
+            switch (item?.ItemType)
+            {
+                case ItemObject.ItemTypeEnum.Horse:
+                case ItemObject.ItemTypeEnum.HorseHarness:
+                    CharacterSkills(troop).Skills.SetPropertyValue(riding, ClampSkillLevel(riding));
+                    break;
+                case ItemObject.ItemTypeEnum.OneHandedWeapon:
+                    CharacterSkills(troop).Skills.SetPropertyValue(oneHanded, ClampSkillLevel(oneHanded));
+                    break;
+                case ItemObject.ItemTypeEnum.TwoHandedWeapon:
+                    CharacterSkills(troop).Skills.SetPropertyValue(twoHanded, ClampSkillLevel(twoHanded));
+                    break;
+                case ItemObject.ItemTypeEnum.Polearm:
+                    CharacterSkills(troop).Skills.SetPropertyValue(polearm, ClampSkillLevel(polearm));
+                    break;
+                case ItemObject.ItemTypeEnum.Arrows:
+                    CharacterSkills(troop).Skills.SetPropertyValue(bow, ClampSkillLevel(bow));
+                    break;
+                case ItemObject.ItemTypeEnum.Bolts:
+                    CharacterSkills(troop).Skills.SetPropertyValue(crossbow, ClampSkillLevel(crossbow));
+                    break;
+                case ItemObject.ItemTypeEnum.Bow:
+                    CharacterSkills(troop).Skills.SetPropertyValue(bow, ClampSkillLevel(bow));
+                    break;
+                case ItemObject.ItemTypeEnum.Crossbow:
+                    CharacterSkills(troop).Skills.SetPropertyValue(crossbow,ClampSkillLevel(crossbow));
+                    break;
+                case ItemObject.ItemTypeEnum.Thrown:
+                    CharacterSkills(troop).Skills.SetPropertyValue(throwing, ClampSkillLevel(throwing));
+                    break;
+                case ItemObject.ItemTypeEnum.Shield:
+                case ItemObject.ItemTypeEnum.HeadArmor:
+                case ItemObject.ItemTypeEnum.BodyArmor:
+                case ItemObject.ItemTypeEnum.LegArmor:
+                case ItemObject.ItemTypeEnum.HandArmor:
+                case ItemObject.ItemTypeEnum.ChestArmor:
+                case ItemObject.ItemTypeEnum.Cape:
+                    CharacterSkills(troop).Skills.SetPropertyValue(athletics, ClampSkillLevel(athletics));
+                    break;
+            }
+
+            int ClampSkillLevel(SkillObject skill)
+            {
+               return Math.Min(troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount, 300);
+            }
+        }
+
     }
 }
