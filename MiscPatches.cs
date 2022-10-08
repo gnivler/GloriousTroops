@@ -844,5 +844,20 @@ namespace GloriousTroops
 
             return null;
         }
+
+        [HarmonyPatch(typeof(CharacterObject), "GetSkillValue")]
+        public class CharacterObjectGetSkillValue
+        {
+            public static Exception Finalizer(CharacterObject __instance, SkillObject skill, Exception __exception)
+            {
+                if (__exception is not null)
+                {
+                    Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
+                    Restore();
+                }
+
+                return null;
+            }
+        }
     }
 }

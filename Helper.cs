@@ -240,7 +240,7 @@ namespace GloriousTroops
 
         internal static void LogException(Exception ex)
         {
-            TaleWorlds.Library.Debug.DebugManager.PrintError("GloriousTroops", ex.ToString());
+            TaleWorlds.Library.Debug.DebugManager.PrintError("GloriousTroops exception at ResetPartyCharacterVm", ex.ToString());
             Log.Debug?.Log(ex);
         }
     }
