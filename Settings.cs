@@ -46,7 +46,7 @@ namespace GloriousTroops
         public int SkillBuffAmount { get; set; } = 25;
 
         [SettingPropertyBool("Party Screen Changes", HintText = "Compact the Party Screen UI widgets to show multiples (or singles).  Requires restart.", Order = 6, RequireRestart = true)]
-        public bool PartyScreenChanges { get; set; } = false;
+        public bool PartyScreenChanges { get; set; } = true;
 
         [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 7, RequireRestart = false)]
         public bool Debug { get; set; } = false;

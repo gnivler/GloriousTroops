@@ -74,11 +74,14 @@ namespace GloriousTroops
                 original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
                 var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
                 harmony.Patch(original, prefix: new HarmonyMethod(prefix));
-                var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
-                if (MEOWMEOW)
+                if (Globals.Settings.PartyScreenChanges)
                 {
+                    var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
                     harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Postfix)),
                         transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
+                    original = AccessTools.Method("PartyScreenLogic:ValidateCommand");
+                    var patch = AccessTools.Method(typeof(MiscPatches.PartyScreenLogicValidateCommand), nameof(MiscPatches.PartyScreenLogicValidateCommand.Transpiler));
+                    harmony.Patch(original, transpiler: new HarmonyMethod(patch));
                 }
 
                 IsPatched = true;

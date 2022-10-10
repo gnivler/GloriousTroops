@@ -474,7 +474,6 @@ namespace GloriousTroops
         }
 
         // replace all calls to FindIndexOfTroop to FindIndexOrSimilarIndex
-        [HarmonyPatch(typeof(PartyScreenLogic), "ValidateCommand")]
         public class PartyScreenLogicValidateCommand
         {
             private static readonly MethodBase from = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
@@ -482,8 +481,6 @@ namespace GloriousTroops
 
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator gen)
             {
-                if (!Globals.Settings.PartyScreenChanges)
-                    return instructions;
                 var codes = instructions.ToListQ();
                 var stack = new List<CodeInstruction>
                 {
