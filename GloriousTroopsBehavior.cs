@@ -72,7 +72,7 @@ namespace GloriousTroops
                 Equipments(mbEquipmentRoster) = new List<Equipment> { EquipmentMap[troop.StringId] };
                 EquipmentRoster(troop) = mbEquipmentRoster;
                 troop.Age = troop.OriginalCharacter.Age;
-                BasicName(troop) = new TextObject(@"{=GTTroop}Glorious " + troop.OriginalCharacter.Name);
+                BasicName(troop) = new TextObject(@"{=GTTroop}Glorious {TROOP}").SetTextVariable("TROOP", troop.Name);
                 HiddenInEncyclopedia(troop) = true;
                 MBObjectManager.Instance.RegisterObject(troop);
                 Troops.Add(troop);

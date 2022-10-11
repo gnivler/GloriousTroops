@@ -41,14 +41,18 @@ namespace GloriousTroops
             {
                 if (!mapEvent.HasWinner || !winnerParty.IsMobile)
                     return;
-                if (LootRecord.TryGetValue(winnerParty, out var equipment))
+                var loserParties = mapEvent.PartiesOnSide(winnerParty.OpponentSide);
+                var itemRoster = new ItemRoster();
+                foreach (var loserParty in loserParties)
                 {
-                    var itemRoster = new ItemRoster();
-                    foreach (var e in equipment)
-                        itemRoster.AddToCounts(e, 1);
-                    EquipmentUpgrading.UpgradeEquipment(winnerParty, itemRoster);
+                    if (LootRecord.TryGetValue(loserParty.Party, out var equipment))
+                    {
+                        foreach (var e in equipment)
+                            itemRoster.AddToCounts(e, 1);
+                    }
                 }
 
+                EquipmentUpgrading.UpgradeEquipment(winnerParty, itemRoster);
                 var parties = mapEvent.InvolvedParties;
                 foreach (var party in parties)
                     LootRecord.Remove(party);

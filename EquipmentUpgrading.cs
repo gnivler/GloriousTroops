@@ -290,8 +290,7 @@ namespace GloriousTroops
             Attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(Attributes(CharacterSkills(troop.Character).Skills));
             var bodyProps = tempCharacter.GetBodyProperties(tempCharacter.Equipment);
             StaticBodyProps(ref bodyProps) = StaticBodyProperties.GetRandomStaticBodyProperties();
-            // localization not included
-            SetName.Invoke(tempCharacter, new object[] { new TextObject(@"{=GTTroop}Glorious " + tempCharacter.Name) });
+            SetName.Invoke(tempCharacter, new object[] { new TextObject(@"{=GTTroop}Glorious {TROOP}").SetTextVariable("TROOP", tempCharacter.Name) });
             IsSoldier(tempCharacter) = true;
             HiddenInEncyclopedia(tempCharacter) = true;
             var mbEquipmentRoster = new MBEquipmentRoster();
@@ -362,7 +361,7 @@ namespace GloriousTroops
                     CharacterSkills(troop).Skills.SetPropertyValue(bow, ClampSkillLevel(bow));
                     break;
                 case ItemObject.ItemTypeEnum.Crossbow:
-                    CharacterSkills(troop).Skills.SetPropertyValue(crossbow,ClampSkillLevel(crossbow));
+                    CharacterSkills(troop).Skills.SetPropertyValue(crossbow, ClampSkillLevel(crossbow));
                     break;
                 case ItemObject.ItemTypeEnum.Thrown:
                     CharacterSkills(troop).Skills.SetPropertyValue(throwing, ClampSkillLevel(throwing));
@@ -380,9 +379,8 @@ namespace GloriousTroops
 
             int ClampSkillLevel(SkillObject skill)
             {
-               return Math.Min(troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount, 300);
+                return Math.Min(troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount, 300);
             }
         }
-
     }
 }
