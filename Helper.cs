@@ -50,6 +50,7 @@ namespace GloriousTroops
                 Campaign.Current.TimeControlMode = CampaignTimeControlMode.Stop;
                 LootRecord.Clear();
                 EquipmentMap.Clear();
+                SkillsMap.Clear();
                 RestoreAllOriginalTroops();
                 Troops.Clear();
                 MBInformationManager.AddQuickInformation(new TextObject("All original troops restored."));
@@ -83,7 +84,7 @@ namespace GloriousTroops
             Troops.Remove(troop);
             EquipmentMap.Remove(troop.StringId);
             MBObjectManager.Instance.UnregisterObject(troop);
-            MBObjectManager.Instance.UnregisterObject(EquipmentUpgrading.CharacterSkills(troop));
+            EquipmentUpgrading.CharacterSkills(troop) = null;
             //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
             if (troopRoster is not null)
             {
@@ -151,11 +152,22 @@ namespace GloriousTroops
                             var troop = roster.GetTroopRoster()[index2];
                             if (!troop.Character.IsHero && (troop.Character.OriginalCharacter is not null || troop.Character.Name == null))
                             {
-                                Log.Debug?.Log($"!!!!! Restoring original troop {troop.Character.OriginalCharacter} in {party.Name}.");
-                                RemoveTracking(troop.Character, roster);
-                                roster.RemoveTroop(troop.Character);
-                                if (party.MapEvent is null)
-                                    roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter?.StringId), 1);
+                                try
+                                {
+                                    RemoveTracking(troop.Character, roster);
+                                    roster.RemoveTroop(troop.Character);
+                                    if (party.MapEvent is null)
+                                    {
+                                        roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter?.StringId), 1);
+                                        Log.Debug?.Log($"!!!!! Restored original troop {troop.Character.OriginalCharacter} in {party.Name}.");
+                                    }
+                                    else
+                                        Log.Debug?.Log($"!!!!! Removed Glorious Troop {troop.Character.OriginalCharacter} in {party.Name}.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Debug?.Log(ex);
+                                }
                             }
                         }
                     }
