@@ -285,6 +285,7 @@ namespace GloriousTroops
         {
             var tempCharacter = CharacterObject.CreateFrom(troop.Character);
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
+            tempCharacter.Level = troop.Character.Level; 
             // have to create a new MBCharacterSkills or every similar BCO picks up changes
             CharacterSkills(tempCharacter) = new MBCharacterSkills();
             Attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(Attributes(CharacterSkills(troop.Character).Skills));

@@ -67,6 +67,7 @@ namespace GloriousTroops
                 if (troop.OriginalCharacter is null)
                     return;
                 troop.InitializeHeroCharacterOnAfterLoad();
+                troop.Level = troop.OriginalCharacter.Level;
                 Skills(EquipmentUpgrading.CharacterSkills(troop)) = SkillsMap[troop.StringId];
                 var mbEquipmentRoster = new MBEquipmentRoster();
                 Equipments(mbEquipmentRoster) = new List<Equipment> { EquipmentMap[troop.StringId] };
