@@ -28,10 +28,12 @@ namespace GloriousTroops
                 return element;
             var sumAlive = Elements(roster).WhereQ(e => e.Character.Name.Equals(element.Character.Name)).SumQ(t => t.Number);
             var sumWounded = Elements(roster).WhereQ(e => e.Character.Name.Equals(element.Character.Name)).SumQ(t => t.WoundedNumber);
+            var sumXp = Elements(roster).WhereQ(e => e.Character.Name.Equals(element.Character.Name)).SumQ(t => t.Xp);
             var result = new TroopRosterElement(element.Character)
             {
                 Number = sumAlive,
-                WoundedNumber = sumWounded
+                WoundedNumber = sumWounded,
+                Xp = sumXp
             };
             return result;
         }

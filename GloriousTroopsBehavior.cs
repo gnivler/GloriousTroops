@@ -29,18 +29,16 @@ namespace GloriousTroops
         {
             if (Environment.MachineName != "MEOWMEOW")
                 return;
-            var reallyOrphaned = CheckTracking(out var orphans);
+            var reallyOrphaned = CheckTracking(out var orphans, false);
             if (orphans.Count != 0 || reallyOrphaned.Count != 0)
                 Debugger.Break();
         }
 
         public override void SyncData(IDataStore dataStore)
         {
-            if (dataStore.IsSaving && SubModule.MEOWMEOW)
+            if (dataStore.IsSaving) // && SubModule.MEOWMEOW)
             {
-                CheckTracking(out var orphaned);
-                if (orphaned.Count != 0)
-                    Debugger.Break();
+                CheckTracking(out _, true);
             }
 
             if (!dataStore.SyncData("Troops", ref Troops))

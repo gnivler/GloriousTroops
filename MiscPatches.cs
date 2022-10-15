@@ -24,7 +24,6 @@ using Debug = TaleWorlds.Library.Debug;
 // ReSharper disable CommentTypo
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedType.Global
-// ReSharper disable UnusedMember.Local
 // ReSharper disable RedundantAssignment
 // ReSharper disable InconsistentNaming
 
@@ -344,28 +343,6 @@ namespace GloriousTroops
                 var aggregate = element.GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
                 return aggregate;
             }
-
-            public static void Postfix(ref PartyCharacterVM __instance, PartyVM ____partyVm)
-            {
-                // makes the character shown initially be the first to move (because it's wounded)
-                // doesn't fix the 2nd or 3rd though
-                try
-                {
-                    if (!Globals.Settings.PartyScreenChanges)
-                        return;
-                    var troopName = __instance.Troop.Character.Name;
-                    var firstWounded = __instance.Troops.GetTroopRoster().FirstOrDefaultQ(e =>
-                        e.Character.Name.Equals(troopName) && e.WoundedNumber > 0);
-                    if (firstWounded.Character is not null)
-                    {
-                        __instance.Troop = firstWounded.GetNewAggregateTroopRosterElement(__instance.Troops).GetValueOrDefault();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex);
-                }
-            }
         }
 
         // modified assembly copy 1.8.1
@@ -480,22 +457,25 @@ namespace GloriousTroops
         // replace all calls to FindIndexOfTroop to FindIndexOrSimilarIndex
         public class PartyScreenLogicValidateCommand
         {
-            private static readonly MethodBase from = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
-            private static readonly MethodBase to = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
+            private static readonly MethodBase findIndex = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
+            private static readonly MethodBase findSimilarIndex = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
+            private static readonly MethodBase woundedFirst = AccessTools.Method(typeof(Helper), nameof(WoundedFirst));
+            private static readonly MethodBase getSimilarElementXp = AccessTools.Method(typeof(PartyScreenLogicValidateCommand), nameof(GetSimilarElementXp));
 
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator gen)
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 var codes = instructions.ToListQ();
                 var stack = new List<CodeInstruction>
                 {
-                    new(OpCodes.Ldc_I4_0), // false
-                    new(OpCodes.Call, to),
+                    new(OpCodes.Ldarg_1),
+                    new(OpCodes.Call, woundedFirst),
+                    new(OpCodes.Call, findSimilarIndex),
                 };
                 for (var index = 0; index < codes.Count; index++)
                 {
                     var code = codes[index];
                     if (code.opcode == OpCodes.Ldelem_Ref
-                        && codes[index + 2].OperandIs(from))
+                        && codes[index + 2].OperandIs(findIndex))
                     {
                         codes[index + 2].opcode = OpCodes.Nop;
                         codes.InsertRange(index + 3, stack);
@@ -503,7 +483,75 @@ namespace GloriousTroops
                     }
                 }
 
+                // replace GetElementXp with GetSimilarElementXp
+                for (var index = 0; index < codes.Count; index++)
+                {
+                    var code = codes[index];
+                    if (code.opcode == OpCodes.Callvirt
+                        && codes[index + 1].opcode == OpCodes.Ldloc_S
+                        && codes[index + 2].opcode == OpCodes.Ldarg_1
+                        && codes[index + 3].opcode == OpCodes.Callvirt)
+                    {
+                        codes[index].opcode = OpCodes.Call;
+                        codes[index].operand = getSimilarElementXp;
+                    }
+                }
+
                 return codes.AsEnumerable();
+            }
+
+            private static int GetSimilarElementXp(TroopRoster roster, int index)
+            {
+                return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
+            }
+        }
+
+        [HarmonyPatch(typeof(PartyVM), "UpgradeTroop")]
+        public class PartyVMUpgradeTroop
+        {
+            private static readonly MethodBase getElementCopy = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.GetElementCopyAtIndex));
+            private static readonly MethodBase getSimilarElementCopy = AccessTools.Method(typeof(PartyVMUpgradeTroop), nameof(GetSimilarElementCopy));
+            private static readonly MethodBase findIndex = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
+            private static readonly MethodBase findSimilarIndex = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
+            private static readonly MethodBase woundedFirst = AccessTools.Method(typeof(Helper), nameof(WoundedFirst));
+
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                var codes = instructions.ToListQ();
+                var skipFirst = true;
+                for (var i = 0; i < codes.Count; i++)
+                {
+                    var code = codes[i];
+                    if (code.opcode == OpCodes.Callvirt && code.OperandIs(findIndex))
+                    {
+                        if (skipFirst)
+                        {
+                            skipFirst = false;
+                            continue;
+                        }
+
+                        codes[i].opcode = OpCodes.Call;
+                        codes[i].operand = findSimilarIndex;
+                        codes.Insert(i, new(OpCodes.Ldarg_1)); // false, default value
+                        codes.Insert(i + 1, new(OpCodes.Call, woundedFirst)); // false, default value
+                    }
+                }
+                for (var i = 0; i < codes.Count; i++)
+                {
+                    var code = codes[i];
+                    if (code.opcode == OpCodes.Callvirt && code.OperandIs(getElementCopy))
+                    {
+                        codes[i].opcode = OpCodes.Call;
+                        codes[i].operand = getSimilarElementCopy;
+                    }
+                }
+
+                return codes.AsEnumerable();
+            }
+            
+            private static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)
+            {
+                return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
             }
         }
 
@@ -876,6 +924,70 @@ namespace GloriousTroops
                 }
 
                 return null;
+            }
+        }
+        //
+        // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
+        // public class MBObjectManagerUnregisterObject
+        // {
+        //     public static void Prefix(MBObjectBase obj)
+        //     {
+        //         if (obj is CharacterObject characterObject)
+        //         {
+        //             if (characterObject.Name.Contains("Caravan"))
+        //             {
+        //             }
+        //         }
+        //     }
+        // }
+
+        // [HarmonyPatch(typeof(TroopRoster), "AddToCounts")]
+        // public class TroopRosterAddToCounts
+        // {
+        //     public static void Prefix(CharacterObject character)
+        //     {
+        //         if (character.Name is null)
+        //         {
+        //             Log.Debug?.Log("\n");
+        //             new StackTrace().GetFrames()?.Take(5).Select(f => f.GetMethod()?.FullDescription()).Do(x => Log.Debug?.Log(x));
+        //             return;
+        //         }
+        //
+        //         if (character.Name.Contains("Caravan"))
+        //         {
+        //             Log.Debug?.Log("\n");
+        //             new StackTrace().GetFrames()?.Take(5).Select(f => f.GetMethod()?.FullDescription()).Do(x => Log.Debug?.Log(x));
+        //         }
+        //     }
+        // }
+
+        public class SaveContextCollectObjects
+        {
+            public static void Postfix(object __instance)
+            {
+                var childObjects = Traverse.Create(__instance).Field<List<object>>("_childObjects").Value;
+                var childObjectIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildObjects").Value;
+                var childContainers = Traverse.Create(__instance).Field<List<object>>("_childContainers").Value;
+                var childContainersIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildContainers").Value;
+                for (var i = 60_000; i < childObjects.Count; i++) // aim high to avoid wiping too many
+                {
+                    if (childObjects[i] is CharacterSkills cs)
+                    {
+                        childObjects.RemoveAt(i--);
+                        childObjectIds.Remove(childObjectIds.ElementAt(i));
+                        cs = null;
+                    }
+                }
+
+                for (var i = 40_000; i < childContainers.Count; i++)
+                {
+                    if (childContainers[i] is Dictionary<SkillObject, int> container)
+                    {
+                        childContainers.RemoveAt(i--);
+                        childContainersIds.Remove(childContainersIds.ElementAt(i));
+                        container = null;
+                    }
+                }
             }
         }
     }

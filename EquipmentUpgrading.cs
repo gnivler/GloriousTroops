@@ -38,7 +38,7 @@ namespace GloriousTroops
         internal static readonly AccessTools.FieldRef<BasicCharacterObject, MBCharacterSkills> CharacterSkills =
             AccessTools.FieldRefAccess<BasicCharacterObject, MBCharacterSkills>("CharacterSkills");
 
-        private static readonly AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> Attributes =
+        internal static readonly AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> Attributes =
             AccessTools.FieldRefAccess<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>>("_attributes");
 
         internal static MethodInfo SetName;
@@ -119,6 +119,8 @@ namespace GloriousTroops
 
                 for (var index = 0; index < usableEquipment.Count; index++)
                 {
+                    if (troop.Number == 0)
+                        break;
                     var possibleUpgrade = usableEquipment[index];
                     // bail-out clauses
                     // bandits will loot anything
@@ -151,7 +153,7 @@ namespace GloriousTroops
                             || !troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Musket)))
                         continue;
                     LogBoth($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, valued at {possibleUpgrade.EquipmentElement.Value()} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
-                    DoPossibleUpgrade(party, possibleUpgrade, troop, ref usableEquipment);
+                    DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment);
                     // if all the troops were upgraded, bail out to the next troop
                     if (!troop.Character.IsHero && party.MemberRoster.FindIndexOfTroop(troop.Character.OriginalCharacter ?? troop.Character) == -1)
                         break;
@@ -215,7 +217,7 @@ namespace GloriousTroops
         private static void DoPossibleUpgrade(
             PartyBase party,
             ItemRosterElement possibleUpgrade,
-            TroopRosterElement troopRosterElement,
+            ref TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment)
         {
             var targetSlot = GetSlotOfLeastValuableOfType(possibleUpgrade.EquipmentElement.Item.ItemType, troopRosterElement);
@@ -243,14 +245,12 @@ namespace GloriousTroops
             for (var i = 0; i < iterations; i++)
             {
                 var troop = !troopRosterElement.Character.IsHero && troopRosterElement.Character.OriginalCharacter is null
-                    ? CreateCustomCharacter(troopRosterElement)
+                    ? CreateCustomCharacter(ref troopRosterElement)
                     : troopRosterElement.Character;
                 LogBoth($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
                 // assign the upgrade
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
-
-
                 // skill up the troop
                 SetSkillLevel(possibleUpgrade.EquipmentElement.Item, troop);
 
@@ -281,11 +281,11 @@ namespace GloriousTroops
             }
         }
 
-        private static CharacterObject CreateCustomCharacter(TroopRosterElement troop)
+        private static CharacterObject CreateCustomCharacter(ref TroopRosterElement troop)
         {
             var tempCharacter = CharacterObject.CreateFrom(troop.Character);
             tempCharacter.InitializeHeroCharacterOnAfterLoad();
-            tempCharacter.Level = troop.Character.Level; 
+            tempCharacter.Level = troop.Character.Level;
             // have to create a new MBCharacterSkills or every similar BCO picks up changes
             CharacterSkills(tempCharacter) = new MBCharacterSkills();
             Attributes(CharacterSkills(tempCharacter).Skills) = new Dictionary<SkillObject, int>(Attributes(CharacterSkills(troop.Character).Skills));
@@ -297,6 +297,7 @@ namespace GloriousTroops
             var mbEquipmentRoster = new MBEquipmentRoster();
             Equipments(mbEquipmentRoster) = new List<Equipment> { new(troop.Character.Equipment) };
             EquipmentRoster(tempCharacter) = mbEquipmentRoster;
+            troop.Number--;
             return tempCharacter;
         }
 

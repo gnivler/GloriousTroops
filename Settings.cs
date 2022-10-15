@@ -50,5 +50,8 @@ namespace GloriousTroops
 
         [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 7, RequireRestart = false)]
         public bool Debug { get; set; } = false;
+        
+        // [SettingPropertyBool("Save Recovery", HintText = "Removes excess CharacterSkill objects.  Save to NEW slot.  Then load.  Save again to see speed improvement.", Order = 8, RequireRestart = true)]
+        // public bool SaveRecovery { get; set; } = false;
     }
 }

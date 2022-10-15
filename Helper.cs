@@ -102,10 +102,10 @@ namespace GloriousTroops
 
         public static void CheckTracking()
         {
-            CheckTracking(out _);
+            CheckTracking(out _, true);
         }
 
-        public static List<CharacterObject> CheckTracking(out List<CharacterObject> orphaned)
+        public static List<CharacterObject> CheckTracking(out List<CharacterObject> orphaned, bool prune)
         {
             var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => !c.IsHero && c.OriginalCharacter is not null).ToListQ();
             var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(MobileParty.All.SelectQ(m => m.PrisonRoster)
@@ -122,8 +122,34 @@ namespace GloriousTroops
             Log.Debug?.Log($"Found {orphaned.Count} orphaned troops out of {allGloriousTroops.CountQ()}");
             Log.Debug?.Log($"Found {reallyOrphaned.Count} really orphaned troops out of {allRosters.SumQ(r => r.TotalRegulars)}");
             Log.Debug?.Log($"Found {headless.Count} headless troops out of {allGloriousTroops.CountQ()}");
+
+            if (prune && orphaned.Concat(reallyOrphaned).ToListQ() is var toPrune && toPrune.Any())
+            {
+                Log.Debug?.Log($"Pruning {toPrune.Count} orphaned troops");
+                for (var index = 0; index < allRosters.Count; index++)
+                {
+                    var roster = allRosters[index];
+                    foreach (var troop in roster.ToFlattenedRoster())
+                    {
+                        if (toPrune.ContainsQ(troop.Troop))
+                        {
+                            var ownerParty = (PartyBase)AccessTools.Field(typeof(TroopRoster), "<OwnerParty>k__BackingField").GetValue(roster);
+                            roster.RemoveTroop(troop.Troop);
+                            if (ownerParty.MapEvent is null)
+                            {
+                                Log.Debug?.Log($"Restored {troop.Troop.OriginalCharacter.Name} from {troop.Troop.StringId} in {ownerParty.Name}");
+                                roster.AddToCounts(troop.Troop.OriginalCharacter, 1);
+                            }
+                            else
+                                Log.Debug?.Log($"Pruned {troop.Troop.Name} {troop.Troop.StringId} from {ownerParty.Name}");
+                        }
+                    }
+                }
+            }
+
             return reallyOrphaned;
         }
+
 
         // troops with missing data causing lots of NREs elsewhere
         private static void RestoreAllOriginalTroops()
@@ -251,9 +277,11 @@ namespace GloriousTroops
             }
         }
 
+        internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;
+
         internal static void LogException(Exception ex)
         {
-            TaleWorlds.Library.Debug.DebugManager.PrintError("GloriousTroops exception at ResetPartyCharacterVm", ex.ToString());
+            TaleWorlds.Library.Debug.DebugManager.Print($"GloriousTroops exception\n{ex}");
             Log.Debug?.Log(ex);
         }
     }

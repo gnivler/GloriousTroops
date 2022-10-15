@@ -74,11 +74,18 @@ namespace GloriousTroops
                 original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
                 var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
                 harmony.Patch(original, prefix: new HarmonyMethod(prefix));
+
+                // if (MEOWMEOW || Globals.Settings.SaveRecovery)
+                // {
+                //     original = AccessTools.Method("SaveContext:CollectObjects", new Type[] { });
+                //     var postfix = AccessTools.Method(typeof(MiscPatches.SaveContextCollectObjects), nameof(MiscPatches.SaveContextCollectObjects.Postfix));
+                //     harmony.Patch(original, postfix: new HarmonyMethod(postfix));
+                // }
+
                 if (Globals.Settings.PartyScreenChanges)
                 {
                     var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
-                    harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Postfix)),
-                        transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
+                    harmony.Patch(ctor, transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
                     original = AccessTools.Method("PartyScreenLogic:ValidateCommand");
                     var patch = AccessTools.Method(typeof(MiscPatches.PartyScreenLogicValidateCommand), nameof(MiscPatches.PartyScreenLogicValidateCommand.Transpiler));
                     harmony.Patch(original, transpiler: new HarmonyMethod(patch));
