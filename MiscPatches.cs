@@ -3,14 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.Remoting;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
+using TaleWorlds.CampaignSystem.CharacterDevelopment;
 using TaleWorlds.CampaignSystem.GameComponents;
+using TaleWorlds.CampaignSystem.Inventory;
 using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.CampaignSystem.Settlements;
+using TaleWorlds.CampaignSystem.ViewModelCollection;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
@@ -460,7 +464,7 @@ namespace GloriousTroops
             private static readonly MethodBase findIndex = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
             private static readonly MethodBase findSimilarIndex = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
             private static readonly MethodBase woundedFirst = AccessTools.Method(typeof(Helper), nameof(WoundedFirst));
-            private static readonly MethodBase getSimilarElementXp = AccessTools.Method(typeof(PartyScreenLogicValidateCommand), nameof(GetSimilarElementXp));
+            private static readonly MethodBase getSimilarElementXp = AccessTools.Method(typeof(Helper), nameof(GetSimilarElementXp));
 
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
@@ -499,10 +503,44 @@ namespace GloriousTroops
 
                 return codes.AsEnumerable();
             }
+        }
 
-            private static int GetSimilarElementXp(TroopRoster roster, int index)
+        // modified assembly copy 1.8.1
+        [HarmonyPatch(typeof(PartyScreenLogic), "UpgradeTroop")]
+        public class PartyScreenLogicUpgradeTroop
+        {
+            public static bool Prefix(PartyScreenLogic __instance, PartyScreenLogic.PartyCommand command)
             {
-                return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
+                if (!__instance.ValidateCommand(command))
+                    return false;
+                var character = command.Character;
+                var upgradeTarget = character.UpgradeTargets[command.UpgradeTarget];
+                var roster = __instance.MemberRosters[(int)command.RosterSide];
+                // switch the command character for a character which has enough xp to level
+                // we wouldn't have landed in this method if at least ONE character didn't have enough xp
+                var maxAkaLevellingXp = roster.GetTroopRoster().WhereQ(e => e.Character != null && e.Character.Name.Equals(character.Name)).MaxQ(e => e.Xp);
+                character = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == maxAkaLevellingXp).Character;
+                var indexOfTroop = roster.FindIndexOfTroop(character);
+                var num = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget) * command.TotalNumber;
+                roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - num);
+                var usedHorses = (List<(EquipmentElement, int)>)null;
+                Traverse.Create(__instance).Method("SetPartyGoldChangeAmount", __instance.CurrentData.PartyGoldChangeAmount - character.GetUpgradeGoldCost(PartyBase.MainParty, command.UpgradeTarget) * command.TotalNumber).GetValue();
+                if (upgradeTarget.UpgradeRequiresItemFromCategory != null)
+                    usedHorses = (List<(EquipmentElement, int)>)Traverse.Create(__instance).Method("RemoveItemFromItemRoster", upgradeTarget.UpgradeRequiresItemFromCategory, command.TotalNumber).GetValue();
+                var woundedCount = 0;
+                foreach (var troopRosterElement in __instance.MemberRosters[(int)command.RosterSide].GetTroopRoster())
+                {
+                    if (troopRosterElement.Character == character && command.TotalNumber > troopRosterElement.Number - troopRosterElement.WoundedNumber)
+                        woundedCount = command.TotalNumber - (troopRosterElement.Number - troopRosterElement.WoundedNumber);
+                }
+
+                __instance.MemberRosters[(int)command.RosterSide].AddToCounts(character, -command.TotalNumber, woundedCount: -woundedCount);
+                __instance.MemberRosters[(int)command.RosterSide].AddToCounts(upgradeTarget, command.TotalNumber, woundedCount: woundedCount);
+                Traverse.Create(__instance).Method("AddUpgradeToHistory", character, upgradeTarget, command.TotalNumber).GetValue();
+                Traverse.Create(__instance).Method("AddUsedHorsesToHistory", usedHorses).GetValue();
+                var updateDelegate = __instance.UpdateDelegate;
+                updateDelegate?.Invoke(command);
+                return false;
             }
         }
 
@@ -532,8 +570,8 @@ namespace GloriousTroops
 
                         codes[i].opcode = OpCodes.Call;
                         codes[i].operand = findSimilarIndex;
-                        codes.Insert(i, new(OpCodes.Ldarg_1)); // false, default value
-                        codes.Insert(i + 1, new(OpCodes.Call, woundedFirst)); // false, default value
+                        codes.Insert(i, new(OpCodes.Ldarg_1));
+                        codes.Insert(i + 1, new(OpCodes.Call, woundedFirst));
                     }
                 }
 
@@ -555,6 +593,89 @@ namespace GloriousTroops
                 return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
             }
         }
+
+        [HarmonyPatch(typeof(PartyCharacterVM), "InitializeUpgrades")]
+        public class PartyCharacterVMInitializeUpgrades
+        {
+            public static bool Prefix(PartyCharacterVM __instance, PartyScreenLogic ____partyScreenLogic, PartyVM ____partyVm, string ____entireStackShortcutKeyText, string ____fiveStackShortcutKeyText)
+            {
+                if (__instance.Side == PartyScreenLogic.PartyRosterSide.Right && !__instance.Character.IsHero && __instance.Character.UpgradeTargets.Length != 0 && !__instance.IsPrisoner && !____partyScreenLogic.IsTroopUpgradesDisabled)
+                {
+                    for (var i = 0; i < __instance.Character.UpgradeTargets.Length; i++)
+                    {
+                        var characterObject = __instance.Character.UpgradeTargets[i];
+                        var flag = false;
+                        var flag2 = false;
+                        var num = 0;
+                        var level = characterObject.Level;
+                        var upgradeGoldCost = __instance.Character.GetUpgradeGoldCost(PartyBase.MainParty, i);
+                        PerkObject requiredPerk;
+                        var flag3 = Campaign.Current.Models.PartyTroopUpgradeModel.DoesPartyHaveRequiredPerksForUpgrade(PartyBase.MainParty, __instance.Character, characterObject, out requiredPerk);
+                        var b = flag3 ? __instance.Troop.Number : 0;
+                        var flag4 = true;
+                        var numOfCategoryItemPartyHas = __instance.GetNumOfCategoryItemPartyHas(____partyScreenLogic.RightOwnerParty.ItemRoster, characterObject.UpgradeRequiresItemFromCategory);
+                        if (characterObject.UpgradeRequiresItemFromCategory != null)
+                            flag4 = numOfCategoryItemPartyHas > 0;
+                        var flag5 = Hero.MainHero.Gold + ____partyScreenLogic.CurrentData.PartyGoldChangeAmount >= upgradeGoldCost;
+                        // edit 1
+                        flag = level >= __instance.Character.Level && __instance.Troops.GetTroopRoster().AnyQ(e => e.Xp >= __instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)) && !____partyVm.PartyScreenLogic.IsTroopUpgradesDisabled;
+                        flag2 = !(flag4 && flag5);
+                        var a = __instance.Troop.Number;
+                        if (upgradeGoldCost > 0)
+                            a = (int)MathF.Clamp(MathF.Floor((Hero.MainHero.Gold + ____partyScreenLogic.CurrentData.PartyGoldChangeAmount) / (float)upgradeGoldCost), 0f, __instance.Troop.Number);
+                        var b2 = characterObject.UpgradeRequiresItemFromCategory != null ? numOfCategoryItemPartyHas : __instance.Troop.Number;
+                        // edit 2
+                        // not so Glorious troops
+                        int num2;
+                        if (__instance.Character.OriginalCharacter is null)
+                            num2 = flag ? (int)MathF.Clamp(MathF.Floor((float)__instance.Troop.Xp / (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
+                        else
+                            num2 = flag ? (int)MathF.Clamp(__instance.Troops.GetTroopRoster().CountQ(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp >= (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
+                        num = MathF.Min(MathF.Min(a, b2), MathF.Min(num2, b));
+                        if (__instance.Character.Culture.IsBandit)
+                        {
+                            flag2 = flag2 || !Campaign.Current.Models.PartyTroopUpgradeModel.CanPartyUpgradeTroopToTarget(PartyBase.MainParty, __instance.Character, characterObject);
+                            num = flag ? num : 0;
+                        }
+                        // edit 3
+                        flag = num > 0;
+                        var upgradeHint = CampaignUIHelper.GetUpgradeHint(i, numOfCategoryItemPartyHas, num, upgradeGoldCost, flag3, requiredPerk, __instance.Character, __instance.Troop, ____partyScreenLogic.CurrentData.PartyGoldChangeAmount, ____entireStackShortcutKeyText, ____fiveStackShortcutKeyText);
+                        __instance.Upgrades[i].Refresh(num, upgradeHint, flag, flag2, flag4, flag3);
+                        if (i == 0)
+                        {
+                            __instance.UpgradeCostText = upgradeGoldCost.ToString();
+                            __instance.HasEnoughGold = flag5;
+                            __instance.NumOfReadyToUpgradeTroops = num2;
+                            __instance.MaxXP = __instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i);
+                            // edit 4
+                            var mostXpOfAnyTroop = __instance.Troops.GetTroopRoster().WhereQ(e => e.Character.Name.Equals(__instance.Character.Name)).MaxQ(e => e.Xp);
+                            var troopWithMostXp = __instance.Troops.GetTroopRoster().First(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp == mostXpOfAnyTroop);
+                            __instance.CurrentXP = troopWithMostXp.Xp >= __instance.MaxXP ? __instance.MaxXP : troopWithMostXp.Xp % __instance.MaxXP;
+                        }
+                    }
+
+                    __instance.AnyUpgradeHasRequirement = __instance.Upgrades.Any(x => x.Requirements.HasItemRequirement || x.Requirements.HasPerkRequirement);
+                }
+
+                var num3 = 0;
+                foreach (var upgrade in __instance.Upgrades)
+                {
+                    if (upgrade.AvailableUpgrades > num3)
+                    {
+                        num3 = upgrade.AvailableUpgrades;
+                    }
+                }
+
+                __instance.NumOfUpgradeableTroops = num3;
+                __instance.IsTroopUpgradable = __instance.NumOfUpgradeableTroops > 0 && !____partyVm.PartyScreenLogic.IsTroopUpgradesDisabled;
+                GameTexts.SetVariable("LEFT", __instance.NumOfReadyToUpgradeTroops);
+                GameTexts.SetVariable("RIGHT", __instance.Troop.Number);
+                __instance.StrNumOfUpgradableTroop = GameTexts.FindText("str_LEFT_over_RIGHT").ToString();
+                __instance.OnPropertyChanged("AmountOfUpgrades");
+                return false;
+            }
+        }
+
 
         // modified assembly copy 1.8.1
         [HarmonyPatch(typeof(PartyScreenLogic), "TransferTroop")]
@@ -887,7 +1008,7 @@ namespace GloriousTroops
         // kludgey hideout 1v1 crash patch
         internal static void HideoutBossDuelPrefix(SPScoreboardSideVM __instance, BasicCharacterObject troop)
         {
-            // if this troop doesn't appear anywhere, generate all the missing ones so it can complete
+            // if __instance troop doesn't appear anywhere, generate all the missing ones so it can complete
             if (!__instance.Parties.AnyQ(s => s.Members.AnyQ(m => m.Character == troop)))
             {
                 foreach (var partyVm in __instance.Parties)
@@ -902,31 +1023,31 @@ namespace GloriousTroops
             }
         }
 
-        internal static Exception UpdateFinalizer(Exception __exception)
-        {
-            if (__exception is not null)
-            {
-                Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
-                Restore();
-            }
-
-            return null;
-        }
-
-        [HarmonyPatch(typeof(CharacterObject), "GetSkillValue")]
-        public class CharacterObjectGetSkillValue
-        {
-            public static Exception Finalizer(Exception __exception)
-            {
-                if (__exception is not null)
-                {
-                    Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
-                    Restore();
-                }
-
-                return null;
-            }
-        }
+        // internal static Exception UpdateFinalizer(Exception __exception)
+        // {
+        //     if (__exception is not null)
+        //     {
+        //         Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
+        //         Restore();
+        //     }
+        //
+        //     return null;
+        // }
+        //
+        // [HarmonyPatch(typeof(CharacterObject), "GetSkillValue")]
+        // public class CharacterObjectGetSkillValue
+        // {
+        //     public static Exception Finalizer(Exception __exception)
+        //     {
+        //         if (__exception is not null)
+        //         {
+        //             Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
+        //             Restore();
+        //         }
+        //
+        //         return null;
+        //     }
+        // }
         //
         // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
         // public class MBObjectManagerUnregisterObject

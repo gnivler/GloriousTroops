@@ -7,6 +7,7 @@ using SandBox.GauntletUI;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.GameMenus;
+using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Party.PartyComponents;
 using TaleWorlds.CampaignSystem.Roster;
@@ -23,7 +24,7 @@ using static GloriousTroops.Globals;
 
 namespace GloriousTroops
 {
-    internal static class Helper
+    public static class Helper
     {
         internal static readonly AccessTools.FieldRef<BasicCharacterObject, MBEquipmentRoster> EquipmentRoster =
             AccessTools.FieldRefAccess<BasicCharacterObject, MBEquipmentRoster>("_equipmentRoster");
@@ -80,7 +81,7 @@ namespace GloriousTroops
         internal static void RemoveTracking(CharacterObject troop, TroopRoster troopRoster)
         {
             if (troop.OriginalCharacter is null)
-                Debugger.Break();
+                return;
             Troops.Remove(troop);
             EquipmentMap.Remove(troop.StringId);
             MBObjectManager.Instance.UnregisterObject(troop);
@@ -107,7 +108,7 @@ namespace GloriousTroops
 
         public static List<CharacterObject> CheckTracking(out List<CharacterObject> orphaned, bool prune)
         {
-            var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => !c.IsHero && c.OriginalCharacter is not null).ToListQ();
+            var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null).ToListQ();
             var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(MobileParty.All.SelectQ(m => m.PrisonRoster)
                 .Concat(Settlement.All.SelectQ(s => s.Party.MemberRoster).Concat(Settlement.All.SelectQ(s => s.Party.PrisonRoster)))).ToListQ();
             var enumeratedGloriousTroops = allRosters.SelectMany(r => r.ToFlattenedRoster().Troops).WhereQ(c => !c.IsHero && c.OriginalCharacter is not null).ToListQ();
@@ -169,43 +170,58 @@ namespace GloriousTroops
             void IterateParties(PartyBase party)
             {
                 var rosters = new[] { party.PrisonRoster, party.MemberRoster };
-                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => !t.Character.IsHero && (t.Character.OriginalCharacter is not null || t.Character.Name == null))))
+                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character is not null && !t.Character.IsHero && t.Character.OriginalCharacter is not null)))
                 {
-                    foreach (var roster in rosters)
+                    try
                     {
-                        for (var index2 = 0; index2 < roster.GetTroopRoster().CountQ(); index2++)
+                        foreach (var roster in rosters)
                         {
-                            var troop = roster.GetTroopRoster()[index2];
-                            if (!troop.Character.IsHero && (troop.Character.OriginalCharacter is not null || troop.Character.Name == null))
+                            for (var index2 = 0; index2 < roster.GetTroopRoster().CountQ(); index2++)
                             {
-                                try
+                                var troop = roster.GetTroopRoster()[index2];
+                                if (!troop.Character.IsHero && (troop.Character.OriginalCharacter is not null || troop.Character.Name == null))
                                 {
                                     RemoveTracking(troop.Character, roster);
-                                    roster.RemoveTroop(troop.Character);
+                                    try
+                                    {
+                                        roster.RemoveTroop(troop.Character);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        roster.RemoveZeroCounts();
+                                        LogException(ex);
+                                    }
+
                                     if (party.MapEvent is null)
                                     {
-                                        roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter?.StringId), 1);
-                                        Log.Debug?.Log($"!!!!! Restored original troop {troop.Character.OriginalCharacter} in {party.Name}.");
+                                        roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter.StringId), 1);
+                                        Log.Debug?.Log($"!!!!! Restored original troop {troop.Character.OriginalCharacter} from {troop.Character.StringId} in {party.Name}.");
                                     }
                                     else
-                                        Log.Debug?.Log($"!!!!! Removed Glorious Troop {troop.Character.OriginalCharacter} in {party.Name}.");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Log.Debug?.Log(ex);
+                                    {
+                                        party.MapEvent.FinalizeEvent();
+                                        Traverse.Create(party.MapEventSide).Field<MapEvent>("_mapEvent").Value = null;
+                                        roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter.StringId), 1);
+                                        Log.Debug?.Log($"!!!!! Battle-Restored Glorious Troop {troop.Character.OriginalCharacter} in {party.Name}.");
+                                    }
                                 }
                             }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        LogException(ex);
+                    }
                 }
             }
 
-            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => !c.IsHero && (c.OriginalCharacter is not null || c.Name == null)).ToListQ();
-            while (allCOs.Any())
+
+            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null);
+            while (allCOs is not null && allCOs.Any())
             {
                 foreach (var troop in allCOs)
                     MBObjectManager.Instance.UnregisterObject(troop);
-                allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => !c.IsHero && (c.OriginalCharacter is not null || c.Name == null)).ToListQ();
+                allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null);
             }
         }
 
@@ -278,6 +294,7 @@ namespace GloriousTroops
         }
 
         internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;
+        internal static int GetSimilarElementXp(TroopRoster roster, int index) => roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
 
         internal static void LogException(Exception ex)
         {

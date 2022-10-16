@@ -67,9 +67,9 @@ namespace GloriousTroops
                 replacement = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateTooltipArmyPrisonerReplacement));
                 harmony.Patch(original, prefix: new HarmonyMethod(replacement));
 
-                original = AccessTools.Method("DefaultPartyWageModel:GetTotalWage");
-                var updateFinalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateFinalizer));
-                harmony.Patch(original, finalizer: new HarmonyMethod(updateFinalizer));
+                // original = AccessTools.Method("DefaultPartyWageModel:GetTotalWage");
+                // var updateFinalizer = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.UpdateFinalizer));
+                // harmony.Patch(original, finalizer: new HarmonyMethod(updateFinalizer));
 
                 original = AccessTools.Method("SPScoreboardSideVM:RemoveTroop");
                 var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
