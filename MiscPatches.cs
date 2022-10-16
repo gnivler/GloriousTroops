@@ -266,7 +266,7 @@ namespace GloriousTroops
                     var added = new HashSet<string>();
                     for (var index = 0; index < currentTroopRoster.Count; ++index)
                     {
-                        var elementCopyAtIndex = currentTroopRoster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(currentTroopRoster).GetValueOrDefault();
+                        var elementCopyAtIndex = currentTroopRoster.GetElementCopyAtIndex(index);
                         var name = elementCopyAtIndex.Character.Name.ToString();
                         if (added.Add(name))
                         {
@@ -536,6 +536,7 @@ namespace GloriousTroops
                         codes.Insert(i + 1, new(OpCodes.Call, woundedFirst)); // false, default value
                     }
                 }
+
                 for (var i = 0; i < codes.Count; i++)
                 {
                     var code = codes[i];
@@ -548,7 +549,7 @@ namespace GloriousTroops
 
                 return codes.AsEnumerable();
             }
-            
+
             private static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)
             {
                 return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
