@@ -82,19 +82,24 @@ namespace GloriousTroops
         {
             if (troop.OriginalCharacter is null)
                 return;
-            Troops.Remove(troop);
-            EquipmentMap.Remove(troop.StringId);
-            MBObjectManager.Instance.UnregisterObject(troop);
-            EquipmentUpgrading.CharacterSkills(troop) = null;
-            //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
-            if (troopRoster is not null)
+
+            // OnPrisonerSold, DesertTroopsFromParty are passing live troops through here so avoid unregistering
+            var index = troopRoster.FindIndexOfTroop(troop);
+            // heroes shouldn't be removed from skill tracking
+            if (Troops.Contains(troop) && index == -1)
             {
-                var ownerParty = (PartyBase)AccessTools.Field(typeof(TroopRoster), "<OwnerParty>k__BackingField").GetValue(troopRoster);
-                if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
-                {
-                    Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
-                    DestroyPartyAction.Apply(null, ownerParty.MobileParty);
-                }
+                Troops.Remove(troop);
+                EquipmentMap.Remove(troop.StringId);
+                MBObjectManager.Instance.UnregisterObject(troop);
+                EquipmentUpgrading.CharacterSkills(troop) = null;
+            }
+
+            //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}"); 
+            var ownerParty = (PartyBase)AccessTools.Field(typeof(TroopRoster), "<OwnerParty>k__BackingField").GetValue(troopRoster);
+            if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
+            {
+                Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
+                DestroyPartyAction.Apply(null, ownerParty.MobileParty);
             }
 
             //new StackTrace().GetFrames()?.Skip(1).Take(3).Do(f => Log.Debug?.Log(f.GetMethod().Name));
