@@ -141,7 +141,7 @@ namespace GloriousTroops
                     if (possibleUpgrade.EquipmentElement.Item.HasHorseComponent && party.MemberRoster.CountMounted() > party.MemberRoster.TotalManCount / 2)
                         continue;
                     // don't take items we can't use
-                    if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
+                    if (troop.Character.GetSkillValue(possibleUpgrade.EquipmentElement.Item?.RelevantSkill) < possibleUpgrade.EquipmentElement.Item.Difficulty)
                         continue;
                     // if it's ammo but we have no ranged weapons, skip to next upgrade EquipmentElement
                     if (possibleUpgrade.EquipmentElement.Item.ItemType is ItemObject.ItemTypeEnum.Arrows or ItemObject.ItemTypeEnum.Bolts
