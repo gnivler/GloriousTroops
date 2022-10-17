@@ -637,6 +637,7 @@ namespace GloriousTroops
                             flag2 = flag2 || !Campaign.Current.Models.PartyTroopUpgradeModel.CanPartyUpgradeTroopToTarget(PartyBase.MainParty, __instance.Character, characterObject);
                             num = flag ? num : 0;
                         }
+
                         // edit 3
                         flag = num > 0;
                         var upgradeHint = CampaignUIHelper.GetUpgradeHint(i, numOfCategoryItemPartyHas, num, upgradeGoldCost, flag3, requiredPerk, __instance.Character, __instance.Troop, ____partyScreenLogic.CurrentData.PartyGoldChangeAmount, ____entireStackShortcutKeyText, ____fiveStackShortcutKeyText);
@@ -1034,20 +1035,20 @@ namespace GloriousTroops
         //     return null;
         // }
         //
-        // [HarmonyPatch(typeof(CharacterObject), "GetSkillValue")]
-        // public class CharacterObjectGetSkillValue
-        // {
-        //     public static Exception Finalizer(Exception __exception)
-        //     {
-        //         if (__exception is not null)
-        //         {
-        //             Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
-        //             Restore();
-        //         }
-        //
-        //         return null;
-        //     }
-        // }
+        [HarmonyPatch(typeof(BasicCharacterObject), "GetSkillValue")]
+        public class CharacterObjectGetSkillValue
+        {
+            public static Exception Finalizer(BasicCharacterObject __instance, SkillObject skill, Exception __exception)
+            {
+                if (__exception is not null && skill.Name.ToString() == "Leadership")
+                {
+                    Debug.DebugManager.PrintWarning($"GloriousTroops caught the game checking for Leadership on {__instance.Name} {__instance.StringId}, which will crash.");
+                    return null;
+                }
+
+                return __exception;
+            }
+        }
         //
         // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
         // public class MBObjectManagerUnregisterObject
