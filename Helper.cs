@@ -175,7 +175,7 @@ namespace GloriousTroops
             void IterateParties(PartyBase party)
             {
                 var rosters = new[] { party.PrisonRoster, party.MemberRoster };
-                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character is not null && !t.Character.IsHero && t.Character.OriginalCharacter is not null)))
+                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character?.OriginalCharacter is not null && !t.Character.IsHero)))
                 {
                     try
                     {
@@ -184,7 +184,7 @@ namespace GloriousTroops
                             for (var index2 = 0; index2 < roster.GetTroopRoster().CountQ(); index2++)
                             {
                                 var troop = roster.GetTroopRoster()[index2];
-                                if (!troop.Character.IsHero && (troop.Character.OriginalCharacter is not null || troop.Character.Name == null))
+                                if (troop.Character?.OriginalCharacter is not null && !troop.Character.IsHero)
                                 {
                                     RemoveTracking(troop.Character, roster);
                                     try
@@ -220,13 +220,15 @@ namespace GloriousTroops
                 }
             }
 
-
-            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null);
+            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.OriginalCharacter is not null && !c.IsHero).ToListQ();
             while (allCOs is not null && allCOs.Any())
             {
-                foreach (var troop in allCOs)
+                for (var index = 0; index < allCOs.Count; index++)
+                {
+                    var troop = allCOs[index];
                     MBObjectManager.Instance.UnregisterObject(troop);
-                allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null);
+                    allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.OriginalCharacter is not null && !c.IsHero).ToListQ();
+                }
             }
         }
 
