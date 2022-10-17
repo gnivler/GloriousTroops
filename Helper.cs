@@ -36,6 +36,9 @@ namespace GloriousTroops
         internal static readonly AccessTools.FieldRef<CharacterObject, bool> HiddenInEncyclopedia =
             AccessTools.FieldRefAccess<CharacterObject, bool>("<HiddenInEncylopedia>k__BackingField");
 
+        private static readonly AccessTools.FieldRef<TroopRoster, PartyBase> OwnerParty =
+            AccessTools.FieldRefAccess<TroopRoster, PartyBase>("<OwnerParty>k__BackingField");
+
         internal static PartyVM PartyViewModel => (PartyVM)SubModule.dataSource.GetValue(ScreenManager.TopScreen as GauntletPartyScreen);
 
         internal static void Restore()
@@ -94,8 +97,8 @@ namespace GloriousTroops
                 EquipmentUpgrading.CharacterSkills(troop) = null;
             }
 
-            //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}"); 
-            var ownerParty = (PartyBase)AccessTools.Field(typeof(TroopRoster), "<OwnerParty>k__BackingField").GetValue(troopRoster);
+            //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
+            var ownerParty = OwnerParty(troopRoster);
             if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
             {
                 Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
