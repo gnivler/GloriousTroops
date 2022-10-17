@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.CampaignSystem.Roster;
+using TaleWorlds.CampaignSystem.Settlements;
 using TaleWorlds.Core;
 using TaleWorlds.Localization;
 using TaleWorlds.ObjectSystem;
@@ -23,6 +26,13 @@ namespace GloriousTroops
         public override void RegisterEvents()
         {
             CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, OnDailyTick);
+            CampaignEvents.OnPrisonerSoldEvent.AddNonSerializedListener(this, OnPrisonerSold);
+        }
+
+        private void OnPrisonerSold(MobileParty sellerParty, TroopRoster prisoners, Settlement settlement)
+        {
+            foreach (var troop in prisoners.GetTroopRoster())
+                RemoveTracking(troop.Character, prisoners);
         }
 
         public static void OnDailyTick()
