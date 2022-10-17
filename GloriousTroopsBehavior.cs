@@ -46,7 +46,7 @@ namespace GloriousTroops
 
         public override void SyncData(IDataStore dataStore)
         {
-            if (dataStore.IsSaving) // && SubModule.MEOWMEOW)
+            if (dataStore.IsSaving && SubModule.MEOWMEOW)
             {
                 CheckTracking(out _, true);
             }
