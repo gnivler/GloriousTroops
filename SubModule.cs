@@ -19,6 +19,7 @@ namespace GloriousTroops
     {
         internal static Harmony harmony;
         internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
+        // internal static SkillPanel skillPanel;
 
         private static readonly AccessTools.FieldRef<PartyVM, PartyCharacterVM> currentCharacter =
             AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
@@ -122,6 +123,26 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
+            // if (MEOWMEOW && Input.IsKeyPressed(InputKey.F1))
+            // {
+            //     skillPanel ??= new(CharacterObject.PlayerCharacter);
+            //     if (ScreenManager.TopScreen.HasLayer(skillPanel.layer))
+            //     {
+            //         MapScreen.Instance.RemoveLayer(skillPanel.layer);
+            //         skillPanel.layer.InputRestrictions.ResetInputRestrictions();
+            //     }
+            //     else
+            //     {
+            //         skillPanel = new(CharacterObject.PlayerCharacter);
+            //         MapScreen.Instance.AddLayer(skillPanel.layer);
+            //         skillPanel.layer.InputRestrictions.SetInputRestrictions();
+            //     }
+            // }
+            //
+            // if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
+            // {
+            // }
+
             var superKey = Campaign.Current != null
                            && (Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl))
                            && (Input.IsKeyDown(InputKey.LeftAlt) || Input.IsKeyDown(InputKey.RightAlt))
