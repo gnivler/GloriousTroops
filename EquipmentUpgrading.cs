@@ -65,8 +65,11 @@ namespace GloriousTroops
 
         private static void LogBoth(object input)
         {
-            Log.Debug?.Log(input);
-            FightLog.Debug?.Log(input);
+            if (Globals.Settings.Debug)
+            {
+                Log.Debug?.Log(input);
+                FightLog.Debug?.Log(input);
+            }
         }
 
         public static void UpgradeEquipment(PartyBase party, ItemRoster loot)
