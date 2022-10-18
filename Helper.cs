@@ -91,22 +91,56 @@ namespace GloriousTroops
             // heroes shouldn't be removed from skill tracking
             if (Troops.Contains(troop) && index == -1)
             {
+                // I've got no idea why Caravan Masters are reaching here alive but they sure appear to be
+                if (troop.Name.ToString().EndsWith("Caravan Master"))
+                {
+                    // Log.Debug?.Log($"*** {troop.StringId}\n{new StackTrace()}");
+                    if (FindParty(troop, out _) is { } foundParty)
+                    {
+                        foundParty.MemberRoster.RemoveTroop(troop);
+                        return;
+                    }
+                }
+
                 Troops.Remove(troop);
                 EquipmentMap.Remove(troop.StringId);
                 MBObjectManager.Instance.UnregisterObject(troop);
                 EquipmentUpgrading.CharacterSkills(troop) = null;
+                //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
             }
 
-            //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
-            var ownerParty = OwnerParty(troopRoster);
-            if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
-            {
-                Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
-                DestroyPartyAction.Apply(null, ownerParty.MobileParty);
-            }
+            // the OwnerParty of caravans is not the caravan... for reasons, they are both caravans
+            // var ownerParty = OwnerParty(troopRoster);
+            // if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
+            // {
+            //     Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
+            //     DestroyPartyAction.Apply(null, ownerParty.MobileParty);
+            // }
 
             //new StackTrace().GetFrames()?.Skip(1).Take(3).Do(f => Log.Debug?.Log(f.GetMethod().Name));
             //Log.Debug?.Log("\n");
+        }
+
+        // timed surprisingly fast ~0.75ms.  Not sure why this comes up with a different party than OwnerParty for a caravan
+        // but it does.  So we have to search for it, until we can also find why OnTroopKilled is sending live troops to RemoveTracking
+        internal static PartyBase FindParty(CharacterObject troop, out bool isPrisoner)
+        {
+            // T.Restart();
+            var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(Settlement.All.SelectQ(s => s.Party.MemberRoster)).ToListQ();
+            foreach (var roster in allRosters)
+            {
+                var index = roster.FindIndexOfTroop(troop);
+                if (index != -1)
+                {
+                    isPrisoner = roster.IsPrisonRoster;
+                    // Log.Debug?.Log($"<<< Found {troop.Name} in {T.ElapsedTicks / (float)Stopwatch.Frequency * 1000:F}ms");
+                    return Traverse.Create(roster).Property<PartyBase>("OwnerParty").Value;
+                }
+            }
+
+            // Log.Debug?.Log($"<<< Missed {troop.Name} in {T.ElapsedTicks / (float)Stopwatch.Frequency * 1000:F}ms");
+            isPrisoner = false;
+            return null;
         }
 
         public static void CheckTracking()
@@ -126,10 +160,12 @@ namespace GloriousTroops
             foreach (var troop in orphaned)
                 Log.Debug?.Log($"Orphaned: {troop.Name} {troop.StringId}");
             foreach (var troop in reallyOrphaned)
-                Log.Debug?.Log($"Really orphaned: {troop.Name} {troop.StringId}");
+            {
+                Log.Debug?.Log($"Actually orphaned: {troop.Name} {troop.StringId} in party {FindParty(troop, out var isPrisoner)} Prisoner? {isPrisoner}");
+            }
 
             Log.Debug?.Log($"Found {orphaned.Count} orphaned troops out of {allGloriousTroops.CountQ()}");
-            Log.Debug?.Log($"Found {reallyOrphaned.Count} really orphaned troops out of {allRosters.SumQ(r => r.TotalRegulars)}");
+            Log.Debug?.Log($"Found {reallyOrphaned.Count} actually orphaned troops out of {allRosters.SumQ(r => r.TotalRegulars)}");
             Log.Debug?.Log($"Found {headless.Count} headless troops out of {allGloriousTroops.CountQ()}");
 
             if (prune && orphaned.Concat(reallyOrphaned).ToListQ() is var toPrune && toPrune.Any())
