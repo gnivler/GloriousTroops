@@ -1,16 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GloriousTroops", "GloriousTroops.csproj", "{F24AFDBD-E523-422D-B68A-896280EE4108}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GloriousTroops", "GloriousTroops.csproj", "{4529B78C-B81F-41C9-BF82-4205D036FC4A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GloriousUnitTests", "GloriousUnitTests\GloriousUnitTests.csproj", "{7BB32A06-A74F-4155-8019-6C9369A34447}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Release|x64 = Release|x64
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F24AFDBD-E523-422D-B68A-896280EE4108}.Debug|x64.ActiveCfg = Debug|x64
-		{F24AFDBD-E523-422D-B68A-896280EE4108}.Debug|x64.Build.0 = Debug|x64
-		{F24AFDBD-E523-422D-B68A-896280EE4108}.Release|x64.ActiveCfg = Release|x64
-		{F24AFDBD-E523-422D-B68A-896280EE4108}.Release|x64.Build.0 = Release|x64
+		{4529B78C-B81F-41C9-BF82-4205D036FC4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4529B78C-B81F-41C9-BF82-4205D036FC4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4529B78C-B81F-41C9-BF82-4205D036FC4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4529B78C-B81F-41C9-BF82-4205D036FC4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BB32A06-A74F-4155-8019-6C9369A34447}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BB32A06-A74F-4155-8019-6C9369A34447}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BB32A06-A74F-4155-8019-6C9369A34447}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BB32A06-A74F-4155-8019-6C9369A34447}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

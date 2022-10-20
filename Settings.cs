@@ -26,7 +26,7 @@ namespace GloriousTroops
 
         public override string Id => id;
         public override string DisplayName => displayName;
-                               
+
         // nice idea DasNeo, nice idea
         [SettingPropertyDropdown("Hotkey", HintText = "Select a hotkey to toggle the Glorious Troops UI.", Order = 0, RequireRestart = false)]
         public DropdownDefault<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 0);
