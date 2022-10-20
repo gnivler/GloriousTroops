@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using SandBox.GauntletUI;
+using SandBox.View.Map;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.MountAndBlade.GauntletUI.Widgets.InputKeys;
 using TaleWorlds.ScreenSystem;
 
 // ReSharper disable ClassNeverInstantiated.Global  
@@ -19,7 +22,8 @@ namespace GloriousTroops
     {
         internal static Harmony harmony;
         internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
-        // internal static SkillPanel skillPanel;
+        internal static SkillPanel skillPanel;
+        internal bool panelShown;
 
         private static readonly AccessTools.FieldRef<PartyVM, PartyCharacterVM> currentCharacter =
             AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
@@ -123,25 +127,28 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
-            // if (MEOWMEOW && Input.IsKeyPressed(InputKey.F1))
-            // {
-            //     skillPanel ??= new(CharacterObject.PlayerCharacter);
-            //     if (ScreenManager.TopScreen.HasLayer(skillPanel.layer))
-            //     {
-            //         MapScreen.Instance.RemoveLayer(skillPanel.layer);
-            //         skillPanel.layer.InputRestrictions.ResetInputRestrictions();
-            //     }
-            //     else
-            //     {
-            //         skillPanel = new(CharacterObject.PlayerCharacter);
-            //         MapScreen.Instance.AddLayer(skillPanel.layer);
-            //         skillPanel.layer.InputRestrictions.SetInputRestrictions();
-            //     }
-            // }
-            //
-            // if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
-            // {
-            // }
+            if (Globals.Settings is not null)
+                if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
+                {
+                    if (panelShown)
+                    {
+                        panelShown = false;
+                        ScreenManager.TopScreen.RemoveLayer(skillPanel.layer);
+                        skillPanel.layer.InputRestrictions.ResetInputRestrictions();
+                    }
+                    else
+                    {
+                        panelShown = true;
+                        skillPanel = new(CharacterObject.PlayerCharacter);
+                        ScreenManager.TopScreen.AddLayer(skillPanel.layer);
+                        skillPanel.layer.InputRestrictions.SetInputRestrictions();
+                    }
+                }
+
+
+            if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
+            {
+            }
 
             var superKey = Campaign.Current != null
                            && (Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl))
