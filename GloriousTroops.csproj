@@ -73,4 +73,10 @@
     <ItemGroup>
       <None Remove="GloriousUnitTests\**" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="M:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\GloriousTroops\GUI\Prefabs\SkillPanel.xml">
+        <Link>_Module\GUI\Prefabs\SkillPanel.xml</Link>
+      </Content>
+    </ItemGroup>
 </Project>
