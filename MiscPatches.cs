@@ -38,11 +38,11 @@ namespace GloriousTroops
         [HarmonyPatch(typeof(BattleCampaignBehavior), "CollectLoots")]
         public static class BattleCampaignBehaviorCollectLoots
         {
-            public static void Prefix(MapEvent mapEvent, PartyBase winnerParty)
+            public static void Prefix(MapEvent mapEvent, PartyBase party)
             {
-                if (!mapEvent.HasWinner || !winnerParty.IsMobile)
+                if (!mapEvent.HasWinner || !party.IsMobile)
                     return;
-                var loserParties = mapEvent.PartiesOnSide(winnerParty.OpponentSide);
+                var loserParties = mapEvent.PartiesOnSide(party.OpponentSide);
                 var itemRoster = new ItemRoster();
                 foreach (var loserParty in loserParties)
                 {
@@ -57,30 +57,30 @@ namespace GloriousTroops
                     .SelectQ(e => e.EquipmentElement).ToListQ();
                 shuffledLoot.Shuffle();
                 var lootValue = shuffledLoot.SumQ(e => e.Value());
-                var winnerParties = mapEvent.PartiesOnSide(winnerParty.Side).ToListQ();
+                var winnerParties = mapEvent.PartiesOnSide(party.Side).ToListQ();
                 var shares = new Dictionary<MapEventParty, List<ItemRosterElement>>();
                 var totalContributionValue = Traverse.Create(winnerParties[0].Party.MapEventSide).Method("CalculateTotalContribution").GetValue<int>();
                 winnerParties.Shuffle();
-                foreach (var party in winnerParties)
+                foreach (var mapEventParty in winnerParties)
                 {
-                    var contribution = (float)party.ContributionToBattle / totalContributionValue;
+                    var contribution = (float)mapEventParty.ContributionToBattle / totalContributionValue;
                     for (var index = 0; index < shuffledLoot.Count; index++)
                     {
                         var item = shuffledLoot[index];
                         var lootPercentage = 0f;
-                        if (shares.TryGetValue(party, out var loot))
+                        if (shares.TryGetValue(mapEventParty, out var loot))
                         {
                             lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
                             if (lootPercentage <= contribution)
                             {
-                                shares[party].Add(new(item, 1));
+                                shares[mapEventParty].Add(new(item, 1));
                                 lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
                                 shuffledLoot.RemoveAt(index);
                             }
                         }
                         else
                         {
-                            shares.Add(party, new List<ItemRosterElement> { new(item, 1) });
+                            shares.Add(mapEventParty, new List<ItemRosterElement> { new(item, 1) });
                             lootPercentage = item.Value() / lootValue;
                             shuffledLoot.RemoveAt(index);
                         }
@@ -91,32 +91,32 @@ namespace GloriousTroops
                 }
 
                 winnerParties.Shuffle();
-                foreach (var party in winnerParties)
+                foreach (var mapEventParty in winnerParties)
                 {
                     for (var index = 0; index < shuffledLoot.Count; index++)
                     {
                         var item = shuffledLoot[index];
-                        shares[party].Add(new(item, 1));
+                        shares[mapEventParty].Add(new(item, 1));
                         shuffledLoot.RemoveAt(index);
                         if (shuffledLoot.Count == 0)
                             break;
                     }
                 }
 
-                foreach (var party in winnerParties)
+                foreach (var mapEventParty in winnerParties)
                 {
-                    if (shares.TryGetValue(party, out _))
+                    if (shares.TryGetValue(mapEventParty, out _))
                     {
                         itemRoster = new ItemRoster();
-                        foreach (var e in shares[party])
+                        foreach (var e in shares[mapEventParty])
                             itemRoster.Add(new ItemRosterElement(e.EquipmentElement, 1));
-                        EquipmentUpgrading.UpgradeEquipment(party.Party, itemRoster);
+                        EquipmentUpgrading.UpgradeEquipment(mapEventParty.Party, itemRoster);
                     }
                 }
 
                 var parties = mapEvent.InvolvedParties;
-                foreach (var party in parties)
-                    LootRecord.Remove(party);
+                foreach (var partyBase in parties)
+                    LootRecord.Remove(partyBase);
             }
         }
 

@@ -45,16 +45,28 @@
 
     <ItemGroup>
         <PackageReference Include="Bannerlord.ButterLib" Version="2.2.6">
-            <ExcludeAssets>all</ExcludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>
         <PackageReference Include="Bannerlord.MCM" Version="4.7.10">
-            <ExcludeAssets>all</ExcludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>
         <PackageReference Include="Bannerlord.UIExtenderEx" Version="2.2.12">
-            <ExcludeAssets>all</ExcludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>
         <PackageReference Include="Lib.Harmony" Version="2.2.2">
-            <ExcludeAssets>all</ExcludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
         </PackageReference>
+        <PackageReference Include="NUnit" Version="3.13.3">
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\GloriousTroops.csproj"/>
     </ItemGroup>
 </Project>

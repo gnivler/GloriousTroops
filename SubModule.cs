@@ -19,8 +19,8 @@ namespace GloriousTroops
     {
         internal static Harmony harmony;
         internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
-        internal static SkillPanel skillPanel;
-        internal bool panelShown;
+        private static SkillPanel skillPanel;
+        private bool panelShown;
 
         private static readonly AccessTools.FieldRef<PartyVM, PartyCharacterVM> currentCharacter =
             AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
