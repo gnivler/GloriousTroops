@@ -53,7 +53,67 @@ namespace GloriousTroops
                     }
                 }
 
-                EquipmentUpgrading.UpgradeEquipment(winnerParty, itemRoster);
+                var shuffledLoot = itemRoster.WhereQ(e => e.EquipmentElement.Item is { } itemObject && itemObject.Value >= Globals.Settings.MinLootValue)
+                    .SelectQ(e => e.EquipmentElement).ToListQ();
+                shuffledLoot.Shuffle();
+                var lootValue = shuffledLoot.SumQ(e => e.Value());
+                var winnerParties = mapEvent.PartiesOnSide(winnerParty.Side).ToListQ();
+                var shares = new Dictionary<MapEventParty, List<ItemRosterElement>>();
+                var totalContributionValue = Traverse.Create(winnerParties[0].Party.MapEventSide).Method("CalculateTotalContribution").GetValue<int>();
+                winnerParties.Shuffle();
+                foreach (var party in winnerParties)
+                {
+                    var contribution = (float)party.ContributionToBattle / totalContributionValue;
+                    for (var index = 0; index < shuffledLoot.Count; index++)
+                    {
+                        var item = shuffledLoot[index];
+                        var lootPercentage = 0f;
+                        if (shares.TryGetValue(party, out var loot))
+                        {
+                            lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
+                            if (lootPercentage <= contribution)
+                            {
+                                shares[party].Add(new(item, 1));
+                                lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
+                                shuffledLoot.RemoveAt(index);
+                            }
+                        }
+                        else
+                        {
+                            shares.Add(party, new List<ItemRosterElement> { new(item, 1) });
+                            lootPercentage = item.Value() / lootValue;
+                            shuffledLoot.RemoveAt(index);
+                        }
+
+                        if (lootPercentage > contribution)
+                            break;
+                    }
+                }
+
+                winnerParties.Shuffle();
+                foreach (var party in winnerParties)
+                {
+                    for (var index = 0; index < shuffledLoot.Count; index++)
+                    {
+                        var item = shuffledLoot[index];
+                        shares[party].Add(new(item, 1));
+                        shuffledLoot.RemoveAt(index);
+                        if (shuffledLoot.Count == 0)
+                            break;
+                    }
+                }
+
+                foreach (var party in winnerParties)
+                {
+                    if (shares.TryGetValue(party, out _))
+                    {
+                        itemRoster = new ItemRoster();
+                        foreach (var e in shares[party])
+                            itemRoster.Add(new ItemRosterElement(e.EquipmentElement, 1));
+                        EquipmentUpgrading.UpgradeEquipment(party.Party, itemRoster);
+                    }
+                }
+
                 var parties = mapEvent.InvolvedParties;
                 foreach (var party in parties)
                     LootRecord.Remove(party);
@@ -1057,6 +1117,7 @@ namespace GloriousTroops
                 return __exception;
             }
         }
+
         //
         // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
         // public class MBObjectManagerUnregisterObject
