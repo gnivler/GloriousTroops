@@ -1,5 +1,8 @@
+using System;
 using MCM.Abstractions.Attributes.v2;
 using MCM.Abstractions.Settings.Base.Global;
+using TaleWorlds.InputSystem;
+using MCM.Abstractions.Dropdown;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 // ReSharper disable FieldCanBeMadeReadOnly.Local
@@ -23,34 +26,38 @@ namespace GloriousTroops
 
         public override string Id => id;
         public override string DisplayName => displayName;
+                               
+        // nice idea DasNeo, nice idea
+        [SettingPropertyDropdown("Hotkey", HintText = "Select a hotkey to toggle the Glorious Troops UI.", Order = 0, RequireRestart = false)]
+        public DropdownDefault<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 0);
 
-        [SettingPropertyBool("Only Bandits", HintText = "Regular lord parties' troops will not upgrade their equipment.", Order = 0, RequireRestart = false)]
+        [SettingPropertyBool("Only Bandits", HintText = "Regular lord parties' troops will not upgrade their equipment.", Order = 1, RequireRestart = false)]
         public bool OnlyBandits { get; set; } = false;
 
-        [SettingPropertyBool("Mounts", HintText = "Allow looting of mounts and saddles.", Order = 1, RequireRestart = false)]
+        [SettingPropertyBool("Mounts", HintText = "Allow looting of mounts and saddles.", Order = 2, RequireRestart = false)]
         public bool Mounts { get; set; } = true;
 
-        [SettingPropertyBool("Maintain Culture", HintText = "Troops won't loot equipment from other cultures.", Order = 2, RequireRestart = false)]
+        [SettingPropertyBool("Maintain Culture", HintText = "Troops won't loot equipment from other cultures.", Order = 3, RequireRestart = false)]
         public bool MaintainCulture { get; set; } = false;
 
-        [SettingPropertyBool("Maintain Weapon Type", HintText = "Troops will only replace their main weapons with the same type (blunt/slashing/piercing).", Order = 3, RequireRestart = false)]
+        [SettingPropertyBool("Maintain Weapon Type", HintText = "Troops will only replace their main weapons with the same type (blunt/slashing/piercing).", Order = 4, RequireRestart = false)]
         public bool MaintainType { get; set; } = false;
 
-        [SettingPropertyInteger("Drop Percent", 1, 100, HintText = "How likely each item is to become lootable.", Order = 4, RequireRestart = false)]
+        [SettingPropertyInteger("Drop Percent", 1, 100, HintText = "How likely each item is to become lootable.", Order = 5, RequireRestart = false)]
         public int DropPercent { get; set; } = 66;
 
-        [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 5, RequireRestart = false)]
+        [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 6, RequireRestart = false)]
         public int MinLootValue { get; set; } = 1000;
 
-        [SettingPropertyInteger("Skill Buff Amount", 0, 100, HintText = "Single relevant skill goes up by this amount when an upgrade is obtained.", Order = 5, RequireRestart = false)]
+        [SettingPropertyInteger("Skill Buff Amount", 0, 100, HintText = "Single relevant skill goes up by this amount when an upgrade is obtained.", Order = 7, RequireRestart = false)]
         public int SkillBuffAmount { get; set; } = 25;
 
-        [SettingPropertyBool("Party Screen Changes", HintText = "Compact the Party Screen UI widgets to show multiples (or singles).  Requires restart.", Order = 6, RequireRestart = true)]
+        [SettingPropertyBool("Party Screen Changes", HintText = "Compact the Party Screen UI widgets to show multiples (or singles).  Requires restart.", Order = 8, RequireRestart = true)]
         public bool PartyScreenChanges { get; set; } = true;
 
-        [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 7, RequireRestart = false)]
+        [SettingPropertyBool("Debug Logging", HintText = "Log to mod folder, log.txt", Order = 9, RequireRestart = false)]
         public bool Debug { get; set; } = false;
-        
+
         // [SettingPropertyBool("Save Recovery", HintText = "Removes excess CharacterSkill objects.  Save to NEW slot.  Then load.  Save again to see speed improvement.", Order = 8, RequireRestart = true)]
         // public bool SaveRecovery { get; set; } = false;
     }
