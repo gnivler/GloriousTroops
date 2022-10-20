@@ -35,8 +35,8 @@ namespace GloriousTroops
         private static readonly AccessTools.StructFieldRef<BodyProperties, StaticBodyProperties> StaticBodyProps =
             AccessTools.StructFieldRefAccess<BodyProperties, StaticBodyProperties>("_staticBodyProperties");
 
-        internal static readonly AccessTools.FieldRef<BasicCharacterObject, MBCharacterSkills> CharacterSkills =
-            AccessTools.FieldRefAccess<BasicCharacterObject, MBCharacterSkills>("CharacterSkills");
+        internal static readonly AccessTools.FieldRef<CharacterObject, MBCharacterSkills> CharacterSkills =
+            AccessTools.FieldRefAccess<CharacterObject, MBCharacterSkills>("CharacterSkills");
 
         internal static readonly AccessTools.FieldRef<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>> Attributes =
             AccessTools.FieldRefAccess<PropertyOwner<SkillObject>, Dictionary<SkillObject, int>>("_attributes");
@@ -384,7 +384,7 @@ namespace GloriousTroops
 
             int ClampSkillLevel(SkillObject skill)
             {
-                return Math.Min(troop.GetSkillValue(athletics) + Globals.Settings.SkillBuffAmount, 300);
+                return Math.Min(troop.GetSkillValue(skill) + Globals.Settings.SkillBuffAmount, 300);
             }
         }
     }
