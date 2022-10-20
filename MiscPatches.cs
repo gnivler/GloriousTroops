@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.Remoting;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
 using TaleWorlds.CampaignSystem.CharacterDevelopment;
 using TaleWorlds.CampaignSystem.GameComponents;
-using TaleWorlds.CampaignSystem.Inventory;
 using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Roster;
@@ -1024,25 +1022,35 @@ namespace GloriousTroops
             }
         }
 
-        // internal static Exception UpdateFinalizer(Exception __exception)
-        // {
-        //     if (__exception is not null)
-        //     {
-        //         Debug.DebugManager.PrintWarning("GloriousTroops is doing a restore operation due to an update");
-        //         Restore();
-        //     }
-        //
-        //     return null;
-        // }
-        //
+        [HarmonyPatch(typeof(BasicCharacterObject), "GetSkillValue")]
+        public class BasicCharacterObjectGetSkillValue
+        {
+            public static bool Prefix(BasicCharacterObject __instance, SkillObject skill, ref int __result)
+            {
+                if (skill is null)
+                {
+                    __result = 0;
+                    return false;
+                }
+
+                if (SkillsMap.TryGetValue(__instance.StringId, out var skills))
+                {
+                    EquipmentUpgrading.Attributes(skills).TryGetValue(skill, out __result);
+                    return false;
+                }
+
+                return false;
+            }
+        }
+
         [HarmonyPatch(typeof(BasicCharacterObject), "GetSkillValue")]
         public class CharacterObjectGetSkillValue
         {
             public static Exception Finalizer(BasicCharacterObject __instance, SkillObject skill, Exception __exception)
             {
-                if (__exception is not null && skill.Name.ToString() == "Leadership")
+                if (__exception is not null)
                 {
-                    Debug.DebugManager.PrintWarning($"GloriousTroops caught the game checking for Leadership on {__instance.Name} {__instance.StringId}, which will crash.");
+                    Debug.DebugManager.PrintWarning($"GloriousTroops caught the game checking for {skill.Name} on {__instance.Name} {__instance.StringId}, which will crash.");
                     return null;
                 }
 
@@ -1083,35 +1091,33 @@ namespace GloriousTroops
         //         }
         //     }
         // }
-
-        public class SaveContextCollectObjects
-        {
-            public static void Postfix(object __instance)
-            {
-                var childObjects = Traverse.Create(__instance).Field<List<object>>("_childObjects").Value;
-                var childObjectIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildObjects").Value;
-                var childContainers = Traverse.Create(__instance).Field<List<object>>("_childContainers").Value;
-                var childContainersIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildContainers").Value;
-                for (var i = 60_000; i < childObjects.Count; i++) // aim high to avoid wiping too many
-                {
-                    if (childObjects[i] is CharacterSkills cs)
-                    {
-                        childObjects.RemoveAt(i--);
-                        childObjectIds.Remove(childObjectIds.ElementAt(i));
-                        cs = null;
-                    }
-                }
-
-                for (var i = 40_000; i < childContainers.Count; i++)
-                {
-                    if (childContainers[i] is Dictionary<SkillObject, int> container)
-                    {
-                        childContainers.RemoveAt(i--);
-                        childContainersIds.Remove(childContainersIds.ElementAt(i));
-                        container = null;
-                    }
-                }
-            }
-        }
+        // public class SaveContextCollectObjects
+        // {
+        //     public static void Postfix(object __instance)
+        //     {
+        //         var childObjects = Traverse.Create(__instance).Field<List<object>>("_childObjects").Value;
+        //         var childObjectIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildObjects").Value;
+        //         var childContainers = Traverse.Create(__instance).Field<List<object>>("_childContainers").Value;
+        //         var childContainersIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildContainers").Value;
+        //         for (var i = 60_000; i < childObjects.Count; i++) // aim high to avoid wiping too many
+        //         {
+        //             if (childObjects[i] is CharacterSkills cs)
+        //             {
+        //                 childObjects.RemoveAt(i--);
+        //                 childObjectIds.Remove(childObjectIds.ElementAt(i));
+        //                 cs = null;
+        //             }
+        //         }
+        //
+        //         for (var i = 40_000; i < childContainers.Count; i++)
+        //         {
+        //             if (childContainers[i] is Dictionary<SkillObject, int> container)
+        //             {
+        //                 childContainers.RemoveAt(i--);
+        //                 childContainersIds.Remove(childContainersIds.ElementAt(i));
+        //                 container = null;
+        //             }
+        //         }
+        //     }
     }
 }
