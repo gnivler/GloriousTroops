@@ -124,7 +124,7 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
-            if (Globals.Settings is not null)
+            if (Globals.Settings?.Hotkey is not null)
                 if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
                 {
                     if (panelShown)
