@@ -124,6 +124,7 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
+
             if (Globals.Settings?.Hotkey is not null)
                 if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
                 {
@@ -152,35 +153,6 @@ namespace GloriousTroops
                            && (Input.IsKeyDown(InputKey.LeftAlt) || Input.IsKeyDown(InputKey.RightAlt))
                            && (Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift));
 
-            if (ScreenManager.TopScreen is GauntletPartyScreen screen
-                && Input.IsKeyPressed(InputKey.Space))
-            {
-                try
-                {
-                    var partyVM = (PartyVM)dataSource.GetValue(screen);
-                    var troop = currentCharacter(partyVM);
-                    if (troop is null)
-                        return;
-
-                    //this.CurrentCharacter.Side TODO use this member instead of First
-                    //var inRoster = partyVM.PartyScreenLogic.MemberRosters.First(r => r.Contains(troop.Character));
-                    //uniqueTroops = inRoster.ToFlattenedRoster().WhereQ(e => e.Troop.Name.Equals(troop.Character.Name)).ToListQ();
-                    //troopIndex = uniqueTroops.FindIndexQ(e => e.Troop.StringId == troop.Character.StringId);
-                    //var nextIndex = troopIndex + 1 > uniqueTroops.Count ? 0 : troopIndex + 1;
-                    //if (!troop.IsHero && troop.Character.OriginalCharacter is not null)
-                    //{
-                    //    var element = currentCharacter(partyVM).Troop;
-                    //    element.Character = uniqueTroops[nextIndex].Troop;
-                    //    currentCharacter(partyVM).Troop = element;
-                    //    Traverse.Create(partyVM).Method("RefreshCurrentCharacterInformation").GetValue();
-                    //    Globals.Log.Debug?.Log(troop.Name);
-                    //}
-                }
-                catch
-                {
-                    //ignore
-                }
-            }
 
             if (superKey && Input.IsKeyPressed(InputKey.T))
                 Helper.Restore();
