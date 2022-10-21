@@ -135,6 +135,8 @@ namespace GloriousTroops
                     }
                     else
                     {
+                        if (CharacterObject.PlayerCharacter is null)
+                            return;
                         panelShown = true;
                         skillPanel = new(CharacterObject.PlayerCharacter);
                         ScreenManager.TopScreen.AddLayer(skillPanel.layer);
