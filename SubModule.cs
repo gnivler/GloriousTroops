@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using SandBox.GauntletUI;
+using SandBox.View.Map;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
@@ -125,22 +126,20 @@ namespace GloriousTroops
         {
             base.OnApplicationTick(dt);
 
-            if (Globals.Settings?.Hotkey is not null)
+            if (Game.Current != null && Globals.Settings?.Hotkey is not null && ScreenManager.TopScreen is MapScreen mapScreen)
                 if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
                 {
                     if (panelShown)
                     {
                         panelShown = false;
-                        ScreenManager.TopScreen.RemoveLayer(skillPanel.layer);
+                        mapScreen.RemoveLayer(skillPanel.layer);
                         skillPanel.layer.InputRestrictions.ResetInputRestrictions();
                     }
                     else
                     {
-                        if (CharacterObject.PlayerCharacter is null)
-                            return;
                         panelShown = true;
                         skillPanel = new(CharacterObject.PlayerCharacter);
-                        ScreenManager.TopScreen.AddLayer(skillPanel.layer);
+                        mapScreen.AddLayer(skillPanel.layer);
                         skillPanel.layer.InputRestrictions.SetInputRestrictions();
                     }
                 }
