@@ -48,12 +48,12 @@ public class SkillPanel : ViewModel
     private BasicTooltipViewModel hint;
     private string troopCount;
 
-    public SkillPanel(CharacterObject character)
+    public SkillPanel()
     {
         if (ScreenManager.TopScreen is not MapScreen)
             return;
         var query = MobileParty.MainParty.MemberRoster.GetTroopRoster()
-            .WhereQ(e => !e.Character.IsHero && e.Character.OriginalCharacter is not null)
+            .WhereQ(e => e.Character.Name.ToString().StartsWith("Glorious"))
             .SelectQ(e => e.Character);
         foreach (var troop in query)
         {

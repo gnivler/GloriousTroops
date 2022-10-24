@@ -78,6 +78,10 @@ namespace GloriousTroops
                 var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
                 harmony.Patch(original, prefix: new HarmonyMethod(prefix));
 
+                // original = AccessTools.Method("MBObjectManager:RegisterObject");
+                // original = original.MakeGenericMethod(typeof(CharacterObject));
+                // var postfix = AccessTools.Method(typeof(MiscPatches.MBObjectManagerRegisterObject), nameof(MiscPatches.MBObjectManagerRegisterObject.Finalizer));
+                // harmony.Patch(original, finalizer: new HarmonyMethod(postfix));
                 // if (MEOWMEOW || Globals.Settings.SaveRecovery)
                 // {
                 //     original = AccessTools.Method("SaveContext:CollectObjects", new Type[] { });
@@ -89,9 +93,6 @@ namespace GloriousTroops
                 {
                     var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
                     harmony.Patch(ctor, transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
-                    original = AccessTools.Method("PartyScreenLogic:ValidateCommand");
-                    var patch = AccessTools.Method(typeof(MiscPatches.PartyScreenLogicValidateCommand), nameof(MiscPatches.PartyScreenLogicValidateCommand.Transpiler));
-                    harmony.Patch(original, transpiler: new HarmonyMethod(patch));
                 }
 
                 IsPatched = true;
@@ -125,7 +126,6 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
-
             if (Game.Current != null && Globals.Settings?.Hotkey is not null && ScreenManager.TopScreen is MapScreen mapScreen)
                 if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
                 {
@@ -138,12 +138,11 @@ namespace GloriousTroops
                     else
                     {
                         panelShown = true;
-                        skillPanel = new(CharacterObject.PlayerCharacter);
+                        skillPanel = new();
                         mapScreen.AddLayer(skillPanel.layer);
                         skillPanel.layer.InputRestrictions.SetInputRestrictions();
                     }
                 }
-
 
             if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
             {

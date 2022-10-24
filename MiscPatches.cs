@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
-using TaleWorlds.CampaignSystem.CharacterDevelopment;
 using TaleWorlds.CampaignSystem.GameComponents;
 using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.CampaignSystem.Party.PartyComponents;
 using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.CampaignSystem.Settlements;
 using TaleWorlds.CampaignSystem.ViewModelCollection;
@@ -19,6 +20,7 @@ using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
 using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade.ViewModelCollection.Scoreboard;
+using TaleWorlds.ObjectSystem;
 using static GloriousTroops.Globals;
 using static GloriousTroops.Helper;
 using Debug = TaleWorlds.Library.Debug;
@@ -400,7 +402,7 @@ namespace GloriousTroops
             // can't figure out how to call the extension method directly so just use this
             private static TroopRosterElement GetAggregatedElement(TroopRosterElement element, TroopRoster roster)
             {
-                if (element.Character.IsHero || element.Character.OriginalCharacter is null)
+                if (element.Character.IsHero || !element.Character.Name.ToString().StartsWith("Glorious"))
                     return element;
                 var aggregate = element.GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
                 return aggregate;
@@ -425,7 +427,7 @@ namespace GloriousTroops
                     var partyCommand = new PartyScreenLogic.PartyCommand();
                     if (transferAmount <= 0)
                         return false;
-                    if (troop.Character.IsHero || troop.Character.OriginalCharacter is null)
+                    if (troop.Character.IsHero || !troop.Character.Name.ToString().StartsWith("Glorious"))
                     {
                         var numberOfHealthyTroopNumberForSide = (int)Traverse.Create(__instance).Method("GetNumberOfHealthyTroopNumberForSide", troop.Troop.Character, fromSide, troop.IsPrisoner).GetValue();
                         var numberOfWoundedTroopNumberForSide = (int)Traverse.Create(__instance).Method("GetNumberOfWoundedTroopNumberForSide", troop.Troop.Character, fromSide, troop.IsPrisoner).GetValue();
@@ -504,7 +506,7 @@ namespace GloriousTroops
                     return;
                 try
                 {
-                    if (character.IsHero || character.OriginalCharacter is null)
+                    if (character.IsHero || !character.Name.ToString().StartsWith("Glorious"))
                         return;
                     var roster = ____partyScreenLogic.MemberRosters[(int)side];
                     __result = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character == character).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
@@ -517,49 +519,158 @@ namespace GloriousTroops
         }
 
         // replace all calls to FindIndexOfTroop to FindIndexOrSimilarIndex
+        [HarmonyPatch(typeof(PartyScreenLogic), "ValidateCommand")]
         public class PartyScreenLogicValidateCommand
         {
-            private static readonly MethodBase findIndex = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
-            private static readonly MethodBase findSimilarIndex = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
-            private static readonly MethodBase woundedFirst = AccessTools.Method(typeof(Helper), nameof(WoundedFirst));
-            private static readonly MethodBase getSimilarElementXp = AccessTools.Method(typeof(Helper), nameof(GetSimilarElementXp));
-
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            public static bool Prefix(PartyScreenLogic __instance, PartyScreenLogic.PartyCommand command, ref bool __result, Game ____game)
             {
-                var codes = instructions.ToListQ();
-                var stack = new List<CodeInstruction>
+                var roster = __instance.MemberRosters[(int)command.RosterSide];
+                var prisonRoster = __instance.PrisonerRosters[(int)command.RosterSide];
+                if (command.Code == PartyScreenLogic.PartyCommandCode.TransferTroop || command.Code == PartyScreenLogic.PartyCommandCode.TransferTroopToLeaderSlot)
                 {
-                    new(OpCodes.Ldarg_1),
-                    new(OpCodes.Call, woundedFirst),
-                    new(OpCodes.Call, findSimilarIndex),
-                };
-                for (var index = 0; index < codes.Count; index++)
-                {
-                    var code = codes[index];
-                    if (code.opcode == OpCodes.Ldelem_Ref
-                        && codes[index + 2].OperandIs(findIndex))
+                    var character = command.Character;
+                    var tuple = new ValueTuple<int, int>();
+                    if (character == CharacterObject.PlayerCharacter)
+                        return false;
+                    if (command.Type == PartyScreenLogic.TroopType.Member)
                     {
-                        codes[index + 2].opcode = OpCodes.Nop;
-                        codes.InsertRange(index + 3, stack);
-                        index += stack.Count; // hop to avoid recursion
+                        var indexOfTroop = FindIndexOrSimilarIndex(roster, character, command.WoundedNumber > 0);
+                        tuple = roster.GetAggregateNumber(character);
+                        // I did not write this!
+                        __result = ((indexOfTroop == -1
+                                        ? 0
+                                        : tuple.Item1 + tuple.Item2 >= command.TotalNumber
+                                            ? 1
+                                            : 0)
+                                    & (command.RosterSide != PartyScreenLogic.PartyRosterSide.Left
+                                        ? 1
+                                        : command.Index != 0
+                                            ? 1
+                                            : 0)) != 0;
+                        return false;
                     }
+
+                    var indexOfTroop1 = FindIndexOrSimilarIndex(prisonRoster, character);
+                    tuple = prisonRoster.GetAggregateNumber(character);
+                    __result = indexOfTroop1 != -1 && tuple.Item1 + tuple.Item2 >= command.TotalNumber;
+                    return false;
                 }
 
-                // replace GetElementXp with GetSimilarElementXp
-                for (var index = 0; index < codes.Count; index++)
+                if (command.Code == PartyScreenLogic.PartyCommandCode.ShiftTroop)
                 {
-                    var code = codes[index];
-                    if (code.opcode == OpCodes.Callvirt
-                        && codes[index + 1].opcode == OpCodes.Ldloc_S
-                        && codes[index + 2].opcode == OpCodes.Ldarg_1
-                        && codes[index + 3].opcode == OpCodes.Callvirt)
+                    var character = command.Character;
+                    // wtf is with these ternaries
+                    if ((character == __instance.LeftPartyLeader || character == __instance.RightPartyLeader
+                            ? 0
+                            : command.RosterSide != PartyScreenLogic.PartyRosterSide.Left || __instance.LeftPartyLeader != null
+                            && command.Index == 0
+                                ? command.RosterSide != PartyScreenLogic.PartyRosterSide.Right
+                                    ? 0
+                                    : __instance.RightPartyLeader == null
+                                        ? 1
+                                        : command.Index != 0
+                                            ? 1
+                                            : 0
+                                : 1) == 0)
+
                     {
-                        codes[index].opcode = OpCodes.Call;
-                        codes[index].operand = getSimilarElementXp;
+                        __result = false;
+                        return false;
                     }
+
+                    if (command.Type == PartyScreenLogic.TroopType.Member)
+                    {
+                        var indexOfTroop = FindIndexOrSimilarIndex(roster, character);
+                        return indexOfTroop != -1 && indexOfTroop != command.Index;
+                    }
+
+                    var indexOfTroop2 = FindIndexOrSimilarIndex(prisonRoster, character);
+                    __result = indexOfTroop2 != -1 && indexOfTroop2 != command.Index;
+                    return false;
                 }
 
-                return codes.AsEnumerable();
+                if (command.Code == PartyScreenLogic.PartyCommandCode.TransferPartyLeaderTroop)
+                {
+                    __result = false;
+                    return false;
+                }
+
+                if (command.Code == PartyScreenLogic.PartyCommandCode.UpgradeTroop)
+                {
+                    var character = command.Character;
+                    var indexOfTroop = FindIndexOrSimilarIndex(roster, character);
+                    var tuple = roster.GetAggregateNumber(character);
+                    if (indexOfTroop == -1 || tuple.Item1 + tuple.Item2 < command.TotalNumber || character.UpgradeTargets.Length == 0)
+                    {
+                        __result = false;
+                        return false;
+                    }
+
+                    if (command.UpgradeTarget < character.UpgradeTargets.Length)
+                    {
+                        var upgradeTarget = character.UpgradeTargets[command.UpgradeTarget];
+                        var upgradeXpCost = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget);
+                        var upgradeGoldCost = character.GetUpgradeGoldCost(PartyBase.MainParty, command.UpgradeTarget);
+                        if (GetSimilarElementXp(roster, indexOfTroop) >= upgradeXpCost * command.TotalNumber)
+                        {
+                            var gold = (command.RosterSide == PartyScreenLogic.PartyRosterSide.Left ? __instance.LeftPartyLeader : __instance.RightPartyLeader)?.HeroObject.Gold;
+                            var goldChangeAmount = __instance.CurrentData.PartyGoldChangeAmount;
+                            var nullable = gold + goldChangeAmount;
+                            var num = upgradeGoldCost * command.TotalNumber;
+                            if (nullable.GetValueOrDefault() >= num & nullable.HasValue)
+                            {
+                                if (upgradeTarget.UpgradeRequiresItemFromCategory == null)
+                                {
+                                    __result = true;
+                                    return false;
+                                }
+
+                                foreach (var itemRosterElement in __instance.RightOwnerParty.ItemRoster)
+                                {
+                                    if (itemRosterElement.EquipmentElement.Item.ItemCategory == upgradeTarget.UpgradeRequiresItemFromCategory)
+                                    {
+                                        __result = true;
+                                        return false;
+                                    }
+                                }
+
+                                MBTextManager.SetTextVariable("REQUIRED_ITEM", upgradeTarget.UpgradeRequiresItemFromCategory.GetName());
+                                MBInformationManager.AddQuickInformation(GameTexts.FindText("str_item_needed_for_upgrade"));
+
+                                __result = false;
+                                return false;
+                            }
+
+                            MBTextManager.SetTextVariable("VALUE", upgradeGoldCost);
+                            MBInformationManager.AddQuickInformation(GameTexts.FindText("str_gold_needed_for_upgrade"));
+                            __result = false;
+                            return false;
+                        }
+
+                        MBInformationManager.AddQuickInformation(new TextObject("{=m1bIfPf1}Character does not have enough experience for upgrade."));
+                        __result = false;
+                        return false;
+                    }
+
+                    MBInformationManager.AddQuickInformation(new TextObject("{=kaQ7DsW3}Character does not have upgrade target."));
+                    __result = false;
+                    return false;
+                }
+
+                if (command.Code == PartyScreenLogic.PartyCommandCode.RecruitTroop)
+                {
+                    __result = __instance.IsPrisonerRecruitable(command.Type, command.Character, command.RosterSide);
+                    return false;
+                }
+
+                if (command.Code == PartyScreenLogic.PartyCommandCode.ExecuteTroop)
+                {
+                    __result = __instance.IsExecutable(command.Type, command.Character, command.RosterSide);
+                    return false;
+                }
+
+                ;
+                throw new MBUnknownTypeException("Unknown command type in ValidateCommand.");
             }
         }
 
@@ -579,21 +690,40 @@ namespace GloriousTroops
                 var maxAkaLevellingXp = roster.GetTroopRoster().WhereQ(e => e.Character != null && e.Character.Name.Equals(character.Name)).MaxQ(e => e.Xp);
                 character = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == maxAkaLevellingXp).Character;
                 var indexOfTroop = roster.FindIndexOfTroop(character);
-                var num = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget) * command.TotalNumber;
+                var upgradeCost = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget);
+                var num = upgradeCost * command.TotalNumber;
                 roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - num);
                 var usedHorses = (List<(EquipmentElement, int)>)null;
                 Traverse.Create(__instance).Method("SetPartyGoldChangeAmount", __instance.CurrentData.PartyGoldChangeAmount - character.GetUpgradeGoldCost(PartyBase.MainParty, command.UpgradeTarget) * command.TotalNumber).GetValue();
                 if (upgradeTarget.UpgradeRequiresItemFromCategory != null)
                     usedHorses = (List<(EquipmentElement, int)>)Traverse.Create(__instance).Method("RemoveItemFromItemRoster", upgradeTarget.UpgradeRequiresItemFromCategory, command.TotalNumber).GetValue();
                 var woundedCount = 0;
-                foreach (var troopRosterElement in __instance.MemberRosters[(int)command.RosterSide].GetTroopRoster())
+                foreach (var troopRosterElement in roster.GetTroopRoster())
                 {
-                    if (troopRosterElement.Character == character && command.TotalNumber > troopRosterElement.Number - troopRosterElement.WoundedNumber)
-                        woundedCount = command.TotalNumber - (troopRosterElement.Number - troopRosterElement.WoundedNumber);
+                    var tuple = roster.GetAggregateNumber(character);
+                    if (troopRosterElement.Character == character && command.TotalNumber > tuple.Item1 - tuple.Item2)
+                        woundedCount = Math.Max(0, command.TotalNumber - tuple.Item1 - tuple.Item2);
                 }
 
-                __instance.MemberRosters[(int)command.RosterSide].AddToCounts(character, -command.TotalNumber, woundedCount: -woundedCount);
-                __instance.MemberRosters[(int)command.RosterSide].AddToCounts(upgradeTarget, command.TotalNumber, woundedCount: woundedCount);
+                if (character.Name.ToString().StartsWith("Glorious"))
+                {
+                    for (var i = 0; i < command.TotalNumber; i++)
+                    {
+                        var co = roster.GetTroopRoster().WhereQ(e =>
+                                     e.Character.StringId != character.StringId
+                                     && e.Character.Name.Equals(character.Name)
+                                     && e.Xp >= upgradeCost).FirstOrDefault().Character
+                                 ?? character;
+                        roster.AddToCounts(co, -1, woundedCount: -woundedCount);
+                        roster.AddToCounts(upgradeTarget, 1, woundedCount: woundedCount);
+                    }
+                }
+                else
+                {
+                    roster.AddToCounts(character, -command.TotalNumber, woundedCount: -woundedCount);
+                    roster.AddToCounts(upgradeTarget, command.TotalNumber, woundedCount: woundedCount);
+                }
+
                 Traverse.Create(__instance).Method("AddUpgradeToHistory", character, upgradeTarget, command.TotalNumber).GetValue();
                 Traverse.Create(__instance).Method("AddUsedHorsesToHistory", usedHorses).GetValue();
                 var updateDelegate = __instance.UpdateDelegate;
@@ -667,8 +797,7 @@ namespace GloriousTroops
                         var num = 0;
                         var level = characterObject.Level;
                         var upgradeGoldCost = __instance.Character.GetUpgradeGoldCost(PartyBase.MainParty, i);
-                        PerkObject requiredPerk;
-                        var flag3 = Campaign.Current.Models.PartyTroopUpgradeModel.DoesPartyHaveRequiredPerksForUpgrade(PartyBase.MainParty, __instance.Character, characterObject, out requiredPerk);
+                        var flag3 = Campaign.Current.Models.PartyTroopUpgradeModel.DoesPartyHaveRequiredPerksForUpgrade(PartyBase.MainParty, __instance.Character, characterObject, out var requiredPerk);
                         var b = flag3 ? __instance.Troop.Number : 0;
                         var flag4 = true;
                         var numOfCategoryItemPartyHas = __instance.GetNumOfCategoryItemPartyHas(____partyScreenLogic.RightOwnerParty.ItemRoster, characterObject.UpgradeRequiresItemFromCategory);
@@ -685,10 +814,14 @@ namespace GloriousTroops
                         // edit 2
                         // not so Glorious troops
                         int num2;
-                        if (__instance.Character.OriginalCharacter is null)
-                            num2 = flag ? (int)MathF.Clamp(MathF.Floor((float)__instance.Troop.Xp / (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
+                        if (!__instance.Character.Name.ToString().StartsWith("Glorious"))
+                            num2 = flag ? (int)MathF.Clamp(MathF.Floor(__instance.Troop.Xp / (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
                         else
-                            num2 = flag ? (int)MathF.Clamp(__instance.Troops.GetTroopRoster().CountQ(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp >= (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
+                            num2 = flag
+                                ? (int)MathF.Clamp(__instance.Troops.GetTroopRoster().CountQ(e =>
+                                    e.Character.Name.Equals(__instance.Character.Name)
+                                    && e.Xp >= (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number)
+                                : 0;
                         num = MathF.Min(MathF.Min(a, b2), MathF.Min(num2, b));
                         if (__instance.Character.Culture.IsBandit)
                         {
@@ -875,7 +1008,7 @@ namespace GloriousTroops
                     return true;
                 try
                 {
-                    if (!____currentCharacter.Character.IsHero && ____currentCharacter.Character.OriginalCharacter is null)
+                    if (!____currentCharacter.Character.IsHero && !____currentCharacter.Character.Name.ToString().StartsWith("Glorious"))
                         return true;
                     var index1 = PartyScreenLogic.PartyRosterSide.None;
                     switch (command.RosterSide)
@@ -1075,7 +1208,7 @@ namespace GloriousTroops
                     var roster = ((PartyBase)partyVm.BattleCombatant).MemberRoster;
                     foreach (var member in roster.GetTroopRoster())
                     {
-                        if (!member.Character.IsHero && member.Character.OriginalCharacter is not null)
+                        if (member.Character.Name.ToString().StartsWith("Glorious"))
                             __instance.AddTroop(partyVm.BattleCombatant, member.Character, new SPScoreboardStatsVM(new TextObject()));
                     }
                 }
@@ -1118,67 +1251,106 @@ namespace GloriousTroops
             }
         }
 
+        [HarmonyPatch(typeof(CaravanPartyComponent), "InitializeCaravanOnCreation")]
+        public class CaravanPartyComponentInitializeCaravanOnCreation
+        {
+            private static readonly IEnumerable<CharacterObject> caravanCharacters =
+                CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26);
+
+            public static void Postfix(MobileParty mobileParty, Hero caravanLeader)
+            {
+                if (caravanLeader is null)
+                {
+                    var troop = mobileParty.MemberRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString().StartsWith("Glorious"));
+                    if (troop.Character is not null)
+                    {
+                        var leader = caravanCharacters.First(c => c.Culture == mobileParty.Party.Owner.Culture && !c.Name.ToString().StartsWith("Glorious"));
+                        mobileParty.MemberRoster.RemoveTroop(troop.Character);
+                        mobileParty.MemberRoster.AddToCounts(leader, 1, true);
+                    }
+                }
+            }
+        }
+    }
+}
+
         //
         // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
         // public class MBObjectManagerUnregisterObject
         // {
         //     public static void Prefix(MBObjectBase obj)
         //     {
-        //         if (obj is CharacterObject characterObject)
-        //         {
-        //             if (characterObject.Name.Contains("Caravan"))
-        //             {
-        //             }
-        //         }
+        //         // if (obj is CharacterObject characterObject)
+        //         // {
+        //         //     Log.Debug?.Log($"*** Unregistering {characterObject.StringId} {characterObject.Name}");
+        //         //     var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+        //         //     stack.Do(x => Log.Debug?.Log(x));
+        //         //     if (characterObject.Name.Contains("Caravan"))
+        //         //     {
+        //         //     }
+        //         // }
         //     }
         // }
-
+        //
+        // public class MBObjectManagerRegisterObject
+        // {
+        //     public static Exception Finalizer(CharacterObject obj)
+        //     {
+        //         Log.Debug?.Log("PING");
+        //         Log.Debug?.Log($"*** Registering {obj.StringId} {obj.Name}");
+        //         var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+        //         stack.Do(x => Log.Debug?.Log(x));
+        //         return null;
+        //     }
+        // }
+        //
         // [HarmonyPatch(typeof(TroopRoster), "AddToCounts")]
         // public class TroopRosterAddToCounts
         // {
-        //     public static void Prefix(CharacterObject character)
+        //     public static void Prefix(TroopRoster __instance, CharacterObject character)
         //     {
-        //         if (character.Name is null)
-        //         {
-        //             Log.Debug?.Log("\n");
-        //             new StackTrace().GetFrames()?.Take(5).Select(f => f.GetMethod()?.FullDescription()).Do(x => Log.Debug?.Log(x));
-        //             return;
-        //         }
-        //
-        //         if (character.Name.Contains("Caravan"))
-        //         {
-        //             Log.Debug?.Log("\n");
-        //             new StackTrace().GetFrames()?.Take(5).Select(f => f.GetMethod()?.FullDescription()).Do(x => Log.Debug?.Log(x));
-        //         }
+        //         // var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+        //         // if (stack.AnyQ(s => s.Contains("TooltipParty")))
+        //         //     return;
+        //         // if (character.Name is null)
+        //         // {
+        //         //     Log.Debug?.Log("\n");
+        //         //     stack.Do(x => Log.Debug?.Log(x));
+        //         //     return;
+        //         // }
+        //         //
+        //         // if (character.Name.Contains("Caravan"))
+        //         // {
+        //         // Log.Debug?.Log("\n");
+        //         // stack.Do(x => Log.Debug?.Log(x));
+        //         // }
         //     }
         // }
-        // public class SaveContextCollectObjects
-        // {
-        //     public static void Postfix(object __instance)
-        //     {
-        //         var childObjects = Traverse.Create(__instance).Field<List<object>>("_childObjects").Value;
-        //         var childObjectIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildObjects").Value;
-        //         var childContainers = Traverse.Create(__instance).Field<List<object>>("_childContainers").Value;
-        //         var childContainersIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildContainers").Value;
-        //         for (var i = 60_000; i < childObjects.Count; i++) // aim high to avoid wiping too many
-        //         {
-        //             if (childObjects[i] is CharacterSkills cs)
-        //             {
-        //                 childObjects.RemoveAt(i--);
-        //                 childObjectIds.Remove(childObjectIds.ElementAt(i));
-        //                 cs = null;
-        //             }
-        //         }
-        //
-        //         for (var i = 40_000; i < childContainers.Count; i++)
-        //         {
-        //             if (childContainers[i] is Dictionary<SkillObject, int> container)
-        //             {
-        //                 childContainers.RemoveAt(i--);
-        //                 childContainersIds.Remove(childContainersIds.ElementAt(i));
-        //                 container = null;
-        //             }
-        //         }
-        //     }
-    }
-}
+// public class SaveContextCollectObjects
+// {
+//     public static void Postfix(object __instance)
+//     {
+//         var childObjects = Traverse.Create(__instance).Field<List<object>>("_childObjects").Value;
+//         var childObjectIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildObjects").Value;
+//         var childContainers = Traverse.Create(__instance).Field<List<object>>("_childContainers").Value;
+//         var childContainersIds = Traverse.Create(__instance).Field<Dictionary<object, int>>("_idsOfChildContainers").Value;
+//         for (var i = 60_000; i < childObjects.Count; i++) // aim high to avoid wiping too many
+//         {
+//             if (childObjects[i] is CharacterSkills cs)
+//             {
+//                 childObjects.RemoveAt(i--);
+//                 childObjectIds.Remove(childObjectIds.ElementAt(i));
+//                 cs = null;
+//             }
+//         }
+//
+//         for (var i = 40_000; i < childContainers.Count; i++)
+//         {
+//             if (childContainers[i] is Dictionary<SkillObject, int> container)
+//             {
+//                 childContainers.RemoveAt(i--);
+//                 childContainersIds.Remove(childContainersIds.ElementAt(i));
+//                 container = null;
+//             }
+//         }
+//     }

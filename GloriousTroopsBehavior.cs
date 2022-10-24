@@ -72,8 +72,6 @@ namespace GloriousTroops
         {
             try
             {
-                if (troop.OriginalCharacter is null)
-                    return;
                 troop.InitializeHeroCharacterOnAfterLoad();
                 troop.Level = troop.OriginalCharacter.Level;
                 Skills(EquipmentUpgrading.CharacterSkills(troop)) = SkillsMap[troop.StringId];
@@ -85,8 +83,7 @@ namespace GloriousTroops
                 HiddenInEncyclopedia(troop) = true;
                 MBObjectManager.Instance.RegisterObject(troop);
                 Troops.Add(troop);
-                if (troop.UpgradeTargets is null)
-                    Debugger.Break();
+                //Log.Debug?.Log($"Rehydrated {troop.Name} {troop.StringId}");
             }
             catch (Exception ex)
             {
