@@ -1254,17 +1254,17 @@ namespace GloriousTroops
         [HarmonyPatch(typeof(CaravanPartyComponent), "InitializeCaravanOnCreation")]
         public class CaravanPartyComponentInitializeCaravanOnCreation
         {
-            private static readonly IEnumerable<CharacterObject> caravanCharacters =
-                CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26);
-
             public static void Postfix(MobileParty mobileParty, Hero caravanLeader)
             {
                 if (caravanLeader is null)
                 {
+                    var caravanCharacters = CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26); ;
                     var troop = mobileParty.MemberRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString().StartsWith("Glorious"));
                     if (troop.Character is not null)
                     {
-                        var leader = caravanCharacters.First(c => c.Culture == mobileParty.Party.Owner.Culture && !c.Name.ToString().StartsWith("Glorious"));
+                        var leader = caravanCharacters.FirstOrDefaultQ(c => c.Culture == mobileParty.Party.Owner.Culture && !c.Name.ToString().StartsWith("Glorious"));
+                        if (leader is null)
+                            Debugger.Break();
                         mobileParty.MemberRoster.RemoveTroop(troop.Character);
                         mobileParty.MemberRoster.AddToCounts(leader, 1, true);
                     }
@@ -1274,58 +1274,58 @@ namespace GloriousTroops
     }
 }
 
-        //
-        // [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
-        // public class MBObjectManagerUnregisterObject
-        // {
-        //     public static void Prefix(MBObjectBase obj)
-        //     {
-        //         // if (obj is CharacterObject characterObject)
-        //         // {
-        //         //     Log.Debug?.Log($"*** Unregistering {characterObject.StringId} {characterObject.Name}");
-        //         //     var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
-        //         //     stack.Do(x => Log.Debug?.Log(x));
-        //         //     if (characterObject.Name.Contains("Caravan"))
-        //         //     {
-        //         //     }
-        //         // }
-        //     }
-        // }
-        //
-        // public class MBObjectManagerRegisterObject
-        // {
-        //     public static Exception Finalizer(CharacterObject obj)
-        //     {
-        //         Log.Debug?.Log("PING");
-        //         Log.Debug?.Log($"*** Registering {obj.StringId} {obj.Name}");
-        //         var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
-        //         stack.Do(x => Log.Debug?.Log(x));
-        //         return null;
-        //     }
-        // }
-        //
-        // [HarmonyPatch(typeof(TroopRoster), "AddToCounts")]
-        // public class TroopRosterAddToCounts
-        // {
-        //     public static void Prefix(TroopRoster __instance, CharacterObject character)
-        //     {
-        //         // var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
-        //         // if (stack.AnyQ(s => s.Contains("TooltipParty")))
-        //         //     return;
-        //         // if (character.Name is null)
-        //         // {
-        //         //     Log.Debug?.Log("\n");
-        //         //     stack.Do(x => Log.Debug?.Log(x));
-        //         //     return;
-        //         // }
-        //         //
-        //         // if (character.Name.Contains("Caravan"))
-        //         // {
-        //         // Log.Debug?.Log("\n");
-        //         // stack.Do(x => Log.Debug?.Log(x));
-        //         // }
-        //     }
-        // }
+//
+// [HarmonyPatch(typeof(MBObjectManager), "UnregisterObject")]
+// public class MBObjectManagerUnregisterObject
+// {
+//     public static void Prefix(MBObjectBase obj)
+//     {
+//         // if (obj is CharacterObject characterObject)
+//         // {
+//         //     Log.Debug?.Log($"*** Unregistering {characterObject.StringId} {characterObject.Name}");
+//         //     var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+//         //     stack.Do(x => Log.Debug?.Log(x));
+//         //     if (characterObject.Name.Contains("Caravan"))
+//         //     {
+//         //     }
+//         // }
+//     }
+// }
+//
+// public class MBObjectManagerRegisterObject
+// {
+//     public static Exception Finalizer(CharacterObject obj)
+//     {
+//         Log.Debug?.Log("PING");
+//         Log.Debug?.Log($"*** Registering {obj.StringId} {obj.Name}");
+//         var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+//         stack.Do(x => Log.Debug?.Log(x));
+//         return null;
+//     }
+// }
+//
+// [HarmonyPatch(typeof(TroopRoster), "AddToCounts")]
+// public class TroopRosterAddToCounts
+// {
+//     public static void Prefix(TroopRoster __instance, CharacterObject character)
+//     {
+//         // var stack = new StackTrace().GetFrames().Take(5).Select(f => f.GetMethod()?.FullDescription());
+//         // if (stack.AnyQ(s => s.Contains("TooltipParty")))
+//         //     return;
+//         // if (character.Name is null)
+//         // {
+//         //     Log.Debug?.Log("\n");
+//         //     stack.Do(x => Log.Debug?.Log(x));
+//         //     return;
+//         // }
+//         //
+//         // if (character.Name.Contains("Caravan"))
+//         // {
+//         // Log.Debug?.Log("\n");
+//         // stack.Do(x => Log.Debug?.Log(x));
+//         // }
+//     }
+// }
 // public class SaveContextCollectObjects
 // {
 //     public static void Postfix(object __instance)

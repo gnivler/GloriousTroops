@@ -152,35 +152,9 @@ namespace GloriousTroops
                         usableEquipment.Add(item);
                         EquipmentUpgrading.DoPossibleUpgrade(party, item, ref upgradeTarget, ref usableEquipment);
                     }
-
-                    Helper.RemoveTracking(original.Character, party.MemberRoster);
                 }
             }
         }
-
-        // get the equipment from the CharacterObject
-        // create an ItemRoster and pass it to UpgradeEquipment
-        private static void HandDownEquipment(CharacterObject troop, PartyBase party, CharacterObject oldTroop)
-        {
-            // if (Troops.ContainsQ(oldTroop))
-            // {
-            //     Log.Debug?.Log($">>> Handing down equipment from {oldTroop.Name} {oldTroop.StringId} to {troop.Name} {troop.StringId}");
-            //     var itemRoster = new ItemRoster();
-            //     for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
-            //     {
-            //         var item = troop.Equipment[index];
-            //         if (item.IsEmpty)
-            //             continue;
-            //         var itemRosterElement = new ItemRosterElement(item, 1);
-            //         itemRoster.Add(itemRosterElement);
-            //     }
-            //
-            //     Helper.RemoveTracking(oldTroop, party.MemberRoster);
-            //     Log.Debug?.Log("Goooooooooo");
-            //     EquipmentUpgrading.UpgradeEquipment(party, itemRoster);
-            // }
-        }
-
 
         // idea from True Battle Loot
         [HarmonyPatch(typeof(MapEventParty), "OnTroopKilled")]
