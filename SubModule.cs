@@ -20,8 +20,8 @@ namespace GloriousTroops
     {
         internal static Harmony harmony;
         internal static readonly bool MEOWMEOW = Environment.MachineName == "MEOWMEOW";
-        internal static SkillPanel skillPanel;
-        internal bool panelShown;
+        private static SkillPanel skillPanel;
+        private bool panelShown;
 
         private static readonly AccessTools.FieldRef<PartyVM, PartyCharacterVM> currentCharacter =
             AccessTools.FieldRefAccess<PartyVM, PartyCharacterVM>("_currentCharacter");
@@ -78,6 +78,10 @@ namespace GloriousTroops
                 var prefix = AccessTools.Method(typeof(MiscPatches), nameof(MiscPatches.HideoutBossDuelPrefix));
                 harmony.Patch(original, prefix: new HarmonyMethod(prefix));
 
+                // original = AccessTools.Method("MBObjectManager:RegisterObject");
+                // original = original.MakeGenericMethod(typeof(CharacterObject));
+                // var postfix = AccessTools.Method(typeof(MiscPatches.MBObjectManagerRegisterObject), nameof(MiscPatches.MBObjectManagerRegisterObject.Finalizer));
+                // harmony.Patch(original, finalizer: new HarmonyMethod(postfix));
                 // if (MEOWMEOW || Globals.Settings.SaveRecovery)
                 // {
                 //     original = AccessTools.Method("SaveContext:CollectObjects", new Type[] { });
@@ -89,9 +93,6 @@ namespace GloriousTroops
                 {
                     var ctor = AccessTools.FirstConstructor(typeof(PartyCharacterVM), c => c.GetParameters().Length > 0);
                     harmony.Patch(ctor, transpiler: new HarmonyMethod(typeof(MiscPatches.PartyCharacterVMConstructor), nameof(MiscPatches.PartyCharacterVMConstructor.Transpiler)));
-                    original = AccessTools.Method("PartyScreenLogic:ValidateCommand");
-                    var patch = AccessTools.Method(typeof(MiscPatches.PartyScreenLogicValidateCommand), nameof(MiscPatches.PartyScreenLogicValidateCommand.Transpiler));
-                    harmony.Patch(original, transpiler: new HarmonyMethod(patch));
                 }
 
                 IsPatched = true;
@@ -125,7 +126,6 @@ namespace GloriousTroops
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
-
             if (Game.Current != null && Globals.Settings?.Hotkey is not null && ScreenManager.TopScreen is MapScreen mapScreen)
                 if (Input.IsKeyPressed((InputKey)Globals.Settings.Hotkey.SelectedIndex + 1))
                 {
@@ -138,12 +138,11 @@ namespace GloriousTroops
                     else
                     {
                         panelShown = true;
-                        skillPanel = new(CharacterObject.PlayerCharacter);
+                        skillPanel = new();
                         mapScreen.AddLayer(skillPanel.layer);
                         skillPanel.layer.InputRestrictions.SetInputRestrictions();
                     }
                 }
-
 
             if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
             {
@@ -154,35 +153,6 @@ namespace GloriousTroops
                            && (Input.IsKeyDown(InputKey.LeftAlt) || Input.IsKeyDown(InputKey.RightAlt))
                            && (Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift));
 
-            if (ScreenManager.TopScreen is GauntletPartyScreen screen
-                && Input.IsKeyPressed(InputKey.Space))
-            {
-                try
-                {
-                    var partyVM = (PartyVM)dataSource.GetValue(screen);
-                    var troop = currentCharacter(partyVM);
-                    if (troop is null)
-                        return;
-
-                    //this.CurrentCharacter.Side TODO use this member instead of First
-                    //var inRoster = partyVM.PartyScreenLogic.MemberRosters.First(r => r.Contains(troop.Character));
-                    //uniqueTroops = inRoster.ToFlattenedRoster().WhereQ(e => e.Troop.Name.Equals(troop.Character.Name)).ToListQ();
-                    //troopIndex = uniqueTroops.FindIndexQ(e => e.Troop.StringId == troop.Character.StringId);
-                    //var nextIndex = troopIndex + 1 > uniqueTroops.Count ? 0 : troopIndex + 1;
-                    //if (!troop.IsHero && troop.Character.OriginalCharacter is not null)
-                    //{
-                    //    var element = currentCharacter(partyVM).Troop;
-                    //    element.Character = uniqueTroops[nextIndex].Troop;
-                    //    currentCharacter(partyVM).Troop = element;
-                    //    Traverse.Create(partyVM).Method("RefreshCurrentCharacterInformation").GetValue();
-                    //    Globals.Log.Debug?.Log(troop.Name);
-                    //}
-                }
-                catch
-                {
-                    //ignore
-                }
-            }
 
             if (superKey && Input.IsKeyPressed(InputKey.T))
                 Helper.Restore();

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -118,59 +119,39 @@ namespace GloriousTroops
             }
         }
 
-        // check if a Glorious troop is being upgraded to a new type, and put up their gear for others to take
-        // place a new call to the helper
+        // check if a Glorious troop is being upgraded to a new type and keep any superior gear
         [HarmonyPatch(typeof(PartyUpgraderCampaignBehavior), "UpgradeTroop")]
         public static class PartyUpgraderCampaignBehaviorUpgradeTroop
         {
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            public static void Prefix(PartyBase party, int rosterIndex, ref TroopRoster __state)
             {
-                var codes = instructions.ToListQ();
-                var handDownInsertion = 0;
-                var upgradeArgs = AccessTools.TypeByName("TroopUpgradeArgs");
-                var Target = AccessTools.Field(upgradeArgs, "Target");
-                var handDownEquipment = AccessTools.Method(typeof(PartyUpgraderCampaignBehaviorUpgradeTroop), nameof(HandDownEquipment));
-                for (var index = 0; index < codes.Count; index++)
-                {
-                    // memberRoster.AddToCounts(upgradeArgs.Target, -possibleUpgradeCount);
-                    if (codes[index].opcode == OpCodes.Ldloc_0
-                        && codes[index + 1].opcode == OpCodes.Ldloc_1
-                        && codes[index + 2].opcode == OpCodes.Ldloc_2
-                        && codes[index + 3].opcode == OpCodes.Ldc_I4_0)
-                        handDownInsertion = index;
-                }
-
-                var stack = new List<CodeInstruction>
-                {
-                    new(OpCodes.Ldloc_1), // upgradeTarget
-                    new(OpCodes.Ldarg_1), // party
-                    new(OpCodes.Ldarg_3), // upgradeArgs
-                    new(OpCodes.Ldfld, Target),
-                    new(OpCodes.Call, handDownEquipment)
-                };
-
-                codes.InsertRange(handDownInsertion, stack);
-                return codes.AsEnumerable();
+                if (party.MemberRoster.GetElementCopyAtIndex(rosterIndex).Character.Name.ToString().StartsWith("Glorious"))
+                    __state = party.MemberRoster.CloneRosterData();
             }
 
-            // get the equipment from the CharacterObject
-            // create an ItemRoster and pass it to UpgradeEquipment
-            private static void HandDownEquipment(CharacterObject troop, PartyBase party, CharacterObject oldTroop)
+            public static void Postfix(PartyBase party, TroopRoster __state)
             {
-                if (Troops.ContainsQ(oldTroop))
+                if (__state is not null)
                 {
-                    var itemRoster = new ItemRoster();
+                    var original = __state.GetTroopRoster().Except(party.MemberRoster.GetTroopRoster()).FirstOrDefault();
+                    var upgradeTarget = party.MemberRoster.GetTroopRoster().Except(__state.GetTroopRoster()).FirstOrDefault();
+                    if (upgradeTarget.Character is null)
+                        for (var index = 0; index < party.MemberRoster.GetTroopRoster().Count; index++)
+                        {
+                            var element = party.MemberRoster.GetElementCopyAtIndex(index);
+                            if (element.Number > __state.GetElementCopyAtIndex(index).Number)
+                                upgradeTarget = element;
+                        }
+
+                    var usableEquipment = new List<ItemRosterElement>();
                     for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
                     {
-                        var item = troop.Equipment[index];
-                        if (item.IsEmpty)
+                        if (original.Character.Equipment[index].IsEmpty)
                             continue;
-                        var itemRosterElement = new ItemRosterElement(item, 1);
-                        itemRoster.Add(itemRosterElement);
+                        var item = new ItemRosterElement(original.Character.Equipment[index], 1);
+                        usableEquipment.Add(item);
+                        EquipmentUpgrading.DoPossibleUpgrade(party, item, ref upgradeTarget, ref usableEquipment);
                     }
-
-                    Helper.RemoveTracking(oldTroop, party.MemberRoster);
-                    EquipmentUpgrading.UpgradeEquipment(party, itemRoster);
                 }
             }
         }

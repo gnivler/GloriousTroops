@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using HarmonyLib;
 using SandBox.GauntletUI;
@@ -48,7 +49,11 @@ namespace GloriousTroops
                 if (ScreenManager.TopScreen is GauntletPartyScreen)
                     PartyViewModel.ExecuteCancel();
                 if (Settlement.CurrentSettlement is not null)
+                {
                     GameMenu.ExitToLast();
+                    MobileParty.MainParty.CurrentSettlement = null;
+                }
+
                 Campaign.Current.TimeControlMode = CampaignTimeControlMode.Stop;
                 LootRecord.Clear();
                 EquipmentMap.Clear();
@@ -81,7 +86,7 @@ namespace GloriousTroops
 
         internal static void RemoveTracking(CharacterObject troop, TroopRoster troopRoster)
         {
-            if (troop.OriginalCharacter is null)
+            if (!troop.Name.ToString().StartsWith("Glorious"))
                 return;
 
             // OnPrisonerSold, DesertTroopsFromParty are passing live troops through here so avoid unregistering
@@ -89,31 +94,13 @@ namespace GloriousTroops
             // heroes shouldn't be removed from skill tracking
             if (Troops.Contains(troop) && index == -1)
             {
-                // I've got no idea why Caravan Masters are reaching here alive but they sure appear to be
-                if (troop.Name.ToString().EndsWith("Caravan Master"))
-                {
-                    // Log.Debug?.Log($"*** {troop.StringId}\n{new StackTrace()}");
-                    if (FindParty(troop, out _) is { } foundParty)
-                    {
-                        foundParty.MemberRoster.RemoveTroop(troop);
-                        return;
-                    }
-                }
-
                 Troops.Remove(troop);
                 EquipmentMap.Remove(troop.StringId);
                 MBObjectManager.Instance.UnregisterObject(troop);
                 EquipmentUpgrading.CharacterSkills(troop) = null;
-                //Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
+                // Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
+                // Log.Debug?.Log(new StackTrace());
             }
-
-            // the OwnerParty of caravans is not the caravan... for reasons, they are both caravans
-            // var ownerParty = OwnerParty(troopRoster);
-            // if (ownerParty is not null && ownerParty.IsMobile && ownerParty.MemberRoster.TotalManCount == 0)
-            // {
-            //     Log.Debug?.Log($"<<< Removing empty party {ownerParty.Name}");
-            //     DestroyPartyAction.Apply(null, ownerParty.MobileParty);
-            // }
 
             //new StackTrace().GetFrames()?.Skip(1).Take(3).Do(f => Log.Debug?.Log(f.GetMethod().Name));
             //Log.Debug?.Log("\n");
@@ -121,24 +108,23 @@ namespace GloriousTroops
 
         // timed surprisingly fast ~0.75ms.  Not sure why this comes up with a different party than OwnerParty for a caravan
         // but it does.  So we have to search for it, until we can also find why OnTroopKilled is sending live troops to RemoveTracking
-        internal static PartyBase FindParty(CharacterObject troop, out bool isPrisoner)
+        internal static List<PartyBase> FindParties(CharacterObject troop)
         {
             // T.Restart();
             var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(Settlement.All.SelectQ(s => s.Party.MemberRoster)).ToListQ();
+            var result = new List<PartyBase>();
             foreach (var roster in allRosters)
             {
                 var index = roster.FindIndexOfTroop(troop);
                 if (index != -1)
                 {
-                    isPrisoner = roster.IsPrisonRoster;
                     // Log.Debug?.Log($"<<< Found {troop.Name} in {T.ElapsedTicks / (float)Stopwatch.Frequency * 1000:F}ms");
-                    return Traverse.Create(roster).Property<PartyBase>("OwnerParty").Value;
+                    result.Add(OwnerParty(roster));
                 }
             }
 
             // Log.Debug?.Log($"<<< Missed {troop.Name} in {T.ElapsedTicks / (float)Stopwatch.Frequency * 1000:F}ms");
-            isPrisoner = false;
-            return null;
+            return result;
         }
 
         public static void CheckTracking()
@@ -148,10 +134,10 @@ namespace GloriousTroops
 
         public static List<CharacterObject> CheckTracking(out List<CharacterObject> orphaned, bool prune)
         {
-            var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && !c.IsHero && c.OriginalCharacter is not null).ToListQ();
+            var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && c.Name.ToString().StartsWith("Glorious")).ToListQ();
             var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(MobileParty.All.SelectQ(m => m.PrisonRoster)
                 .Concat(Settlement.All.SelectQ(s => s.Party.MemberRoster).Concat(Settlement.All.SelectQ(s => s.Party.PrisonRoster)))).ToListQ();
-            var enumeratedGloriousTroops = allRosters.SelectMany(r => r.ToFlattenedRoster().Troops).WhereQ(c => !c.IsHero && c.OriginalCharacter is not null).ToListQ();
+            var enumeratedGloriousTroops = allRosters.SelectMany(r => r.ToFlattenedRoster().Troops).WhereQ(c => c.Name.ToString().StartsWith("Glorious")).ToListQ();
             orphaned = allGloriousTroops.Except(Globals.Troops).ToListQ();
             var reallyOrphaned = enumeratedGloriousTroops.Except(Troops).ToListQ();
             var headless = Troops.Except(allGloriousTroops).ToListQ();
@@ -159,7 +145,11 @@ namespace GloriousTroops
                 Log.Debug?.Log($"Orphaned: {troop.Name} {troop.StringId}");
             foreach (var troop in reallyOrphaned)
             {
-                Log.Debug?.Log($"Actually orphaned: {troop.Name} {troop.StringId} in party {FindParty(troop, out var isPrisoner)} Prisoner? {isPrisoner}");
+                var parties = FindParties(troop);
+                foreach (var party in parties)
+                {
+                    Log.Debug?.Log($"Actually orphaned: {troop.Name} {troop.StringId} in party {party.Name}");
+                }
             }
 
             Log.Debug?.Log($"Found {orphaned.Count} orphaned troops out of {allGloriousTroops.CountQ()}");
@@ -176,7 +166,7 @@ namespace GloriousTroops
                     {
                         if (toPrune.ContainsQ(troop.Troop))
                         {
-                            var ownerParty = (PartyBase)AccessTools.Field(typeof(TroopRoster), "<OwnerParty>k__BackingField").GetValue(roster);
+                            var ownerParty = OwnerParty(roster);
                             roster.RemoveTroop(troop.Troop);
                             if (ownerParty.MapEvent is null)
                             {
@@ -212,7 +202,7 @@ namespace GloriousTroops
             void IterateParties(PartyBase party)
             {
                 var rosters = new[] { party.PrisonRoster, party.MemberRoster };
-                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character?.OriginalCharacter is not null && !t.Character.IsHero)))
+                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character.Name.ToString().StartsWith("Glorious"))))
                 {
                     try
                     {
@@ -221,7 +211,7 @@ namespace GloriousTroops
                             for (var index2 = 0; index2 < roster.GetTroopRoster().CountQ(); index2++)
                             {
                                 var troop = roster.GetTroopRoster()[index2];
-                                if (troop.Character?.OriginalCharacter is not null && !troop.Character.IsHero)
+                                if (troop.Character.Name.ToString().StartsWith("Glorious"))
                                 {
                                     RemoveTracking(troop.Character, roster);
                                     try
@@ -257,15 +247,12 @@ namespace GloriousTroops
                 }
             }
 
-            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.OriginalCharacter is not null && !c.IsHero).ToListQ();
+            var allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.Name.ToString().StartsWith("Glorious")).ToListQ();
             while (allCOs is not null && allCOs.Any())
             {
-                for (var index = 0; index < allCOs.Count; index++)
-                {
-                    var troop = allCOs[index];
+                foreach (var troop in allCOs)
                     MBObjectManager.Instance.UnregisterObject(troop);
-                    allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.OriginalCharacter is not null && !c.IsHero).ToListQ();
-                }
+                allCOs = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c.Name.ToString().StartsWith("Glorious")).ToListQ();
             }
         }
 
@@ -315,7 +302,7 @@ namespace GloriousTroops
 
         internal static void ResetPartyCharacterVm(PartyCharacterVM __instance, PartyVM partyVm = null)
         {
-            if (__instance.Character.IsHero || __instance.Character.OriginalCharacter is null)
+            if (__instance.Character.IsHero || !__instance.Character.Name.ToString().StartsWith("Glorious"))
                 return;
             // limited context so check both rosters
             var isPrisoner = __instance.IsPrisoner;

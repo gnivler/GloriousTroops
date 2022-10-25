@@ -1,77 +1,70 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <Version>1.4.3</Version>
-        <TargetFramework>net48</TargetFramework>
-        <Nullable>disable</Nullable>
-        <BaseOutputPath>$(BANNERLORD_GAME_DIR)/Modules/GloriousTroops/bin/Win64_Shipping_Client/</BaseOutputPath>
-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-        <LangVersion>default</LangVersion>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <PlatformTarget>x64</PlatformTarget>
-        <DebugType>full</DebugType>
-        <OutputPath>$(BaseOutputPath)</OutputPath>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-        <PlatformTarget>x64</PlatformTarget>
-        <DebugSymbols>true</DebugSymbols>
-        <OutputPath>$(BaseOutputPath)</OutputPath>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <Reference Include="$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.*.dll" Exclude="$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.Native.dll">
-            <HintPath>%(Identity)</HintPath>
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\Native\bin\Win64_Shipping_Client\*.dll">
-            <HintPath>%(Identity)</HintPath>
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\SandBox\bin\Win64_Shipping_Client\*.dll">
-            <HintPath>%(Identity)</HintPath>
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\SandBoxCore\bin\Win64_Shipping_Client\*.dll">
-            <HintPath>%(Identity)</HintPath>
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\StoryMode\bin\Win64_Shipping_Client\*.dll">
-            <HintPath>%(Identity)</HintPath>
-            <Private>False</Private>
-        </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Bannerlord.ButterLib" Version="2.2.6">
-            <PrivateAssets>all</PrivateAssets>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </PackageReference>
-        <PackageReference Include="Bannerlord.MCM" Version="4.7.10">
-            <PrivateAssets>all</PrivateAssets>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </PackageReference>
-        <PackageReference Include="Bannerlord.UIExtenderEx" Version="2.2.12">
-            <PrivateAssets>all</PrivateAssets>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </PackageReference>
-        <PackageReference Include="Lib.Harmony" Version="2.2.2">
-            <PrivateAssets>all</PrivateAssets>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </PackageReference>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Compile Remove="GloriousUnitTests\**"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <EmbeddedResource Remove="GloriousUnitTests\**"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Remove="GloriousUnitTests\**"/>
-    </ItemGroup>
+  <PropertyGroup>
+    <Version>1.4.6</Version>
+    <TargetFramework>net48</TargetFramework>
+    <Nullable>disable</Nullable>
+    <BaseOutputPath>$(BANNERLORD_GAME_DIR)/Modules/GloriousTroops/bin/Win64_Shipping_Client/</BaseOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>default</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>full</DebugType>
+    <OutputPath>$(BaseOutputPath)</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>$(BaseOutputPath)</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.*.dll" Exclude="$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.Native.dll">
+      <HintPath>%(Identity)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\Native\bin\Win64_Shipping_Client\*.dll">
+      <HintPath>%(Identity)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\SandBox\bin\Win64_Shipping_Client\*.dll">
+      <HintPath>%(Identity)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\SandBoxCore\bin\Win64_Shipping_Client\*.dll">
+      <HintPath>%(Identity)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\StoryMode\bin\Win64_Shipping_Client\*.dll">
+      <HintPath>%(Identity)</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Bannerlord.ButterLib" Version="2.2.6">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Bannerlord.MCM" Version="4.7.10">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Bannerlord.UIExtenderEx" Version="2.2.12">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Lib.Harmony" Version="2.2.2">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="GloriousUnitTests\**" />
+    <Compile Remove="GloriousUnitTests.butr\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="GloriousUnitTests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="GloriousUnitTests\**" />
+  </ItemGroup>
 </Project>
