@@ -49,7 +49,11 @@ namespace GloriousTroops
                 if (ScreenManager.TopScreen is GauntletPartyScreen)
                     PartyViewModel.ExecuteCancel();
                 if (Settlement.CurrentSettlement is not null)
+                {
                     GameMenu.ExitToLast();
+                    MobileParty.MainParty.CurrentSettlement = null;
+                }
+
                 Campaign.Current.TimeControlMode = CampaignTimeControlMode.Stop;
                 LootRecord.Clear();
                 EquipmentMap.Clear();
