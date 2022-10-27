@@ -1232,7 +1232,7 @@ namespace GloriousTroops
                     return false;
                 }
 
-                return false;
+                return true;
             }
         }
 

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>1.4.6</Version>
+    <Version>1.4.7</Version>
     <TargetFramework>net48</TargetFramework>
     <Nullable>disable</Nullable>
     <BaseOutputPath>$(BANNERLORD_GAME_DIR)/Modules/GloriousTroops/bin/Win64_Shipping_Client/</BaseOutputPath>
@@ -66,5 +66,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="GloriousUnitTests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="M:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\GloriousTroops\GUI\Prefabs\SkillPanel.xml">
+      <Link>GUI\Prefabs\SkillPanel.xml</Link>
+    </Content>
   </ItemGroup>
 </Project>
