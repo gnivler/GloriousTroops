@@ -96,6 +96,7 @@ namespace GloriousTroops
             {
                 Troops.Remove(troop);
                 EquipmentMap.Remove(troop.StringId);
+                SkillsMap.Remove(troop.StringId);
                 MBObjectManager.Instance.UnregisterObject(troop);
                 EquipmentUpgrading.CharacterSkills(troop) = null;
                 // Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
