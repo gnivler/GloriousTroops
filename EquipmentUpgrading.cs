@@ -257,7 +257,7 @@ namespace GloriousTroops
             for (var i = 0; i < iterations; i++)
             {
                 troop = !troopRosterElement.Character.IsHero
-                            && !troopRosterElement.Character.Name.ToString().StartsWith("Glorious")
+                        && !troopRosterElement.Character.Name.ToString().StartsWith("Glorious")
                     ? CreateCustomCharacter(ref troopRosterElement)
                     : troopRosterElement.Character;
                 Log.Debug?.Log($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
@@ -268,7 +268,7 @@ namespace GloriousTroops
                 SetSkillLevel(possibleUpgrade.EquipmentElement.Item, troop);
 
                 // put anything replaced back into the pile
-                if (!replacedItem.IsEmpty && replacedItem.Value() >= (Globals.Settings?.MinLootValue ?? 1000))
+                if (!replacedItem.IsEmpty && replacedItem.ItemValue >= (Globals.Settings?.MinLootValue ?? 1000))
                 {
                     LogBoth($"### Returning {replacedItem.Item?.Name} to the bag");
                     var index = usableEquipment.SelectQ(e => e.EquipmentElement.Item).ToListQ().FindIndexQ(replacedItem.Item);
@@ -293,11 +293,12 @@ namespace GloriousTroops
                 }
             }
 
+            // only used for upgrading a unit during training
             upgradedUnit = new TroopRosterElement(troop)
             {
                 Number = 1
             };
-            
+
             return true;
         }
 
