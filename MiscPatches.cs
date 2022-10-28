@@ -49,16 +49,15 @@ namespace GloriousTroops
                 foreach (var loserParty in loserParties)
                 {
                     if (LootRecord.TryGetValue(loserParty.Party, out var equipment))
-                    {
                         foreach (var e in equipment)
                             itemRoster.AddToCounts(e, 1);
-                    }
                 }
 
-                var shuffledLoot = itemRoster.WhereQ(e => e.EquipmentElement.Item is { } itemObject && itemObject.Value >= Globals.Settings.MinLootValue)
-                    .SelectQ(e => e.EquipmentElement).ToListQ();
+                if (!itemRoster.Any())
+                    return;
+                var shuffledLoot = itemRoster.WhereQ(e => e.EquipmentElement.Item is { } itemObject && itemObject.Value >= Globals.Settings.MinLootValue).ToListQ();
                 shuffledLoot.Shuffle();
-                var lootValue = shuffledLoot.SumQ(e => e.Value());
+                var lootValue = shuffledLoot.SumQ(e => e.EquipmentElement.Value() * e.Amount);
                 var winnerParties = mapEvent.PartiesOnSide(party.Side).ToListQ();
                 var shares = new Dictionary<MapEventParty, List<ItemRosterElement>>();
                 var totalContributionValue = Traverse.Create(winnerParties[0].Party.MapEventSide).Method("CalculateTotalContribution").GetValue<int>();
@@ -72,19 +71,21 @@ namespace GloriousTroops
                         var lootPercentage = 0f;
                         if (shares.TryGetValue(mapEventParty, out var loot))
                         {
-                            lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
+                            lootPercentage = loot.SumQ(e => e.EquipmentElement.Value() * e.Amount) / lootValue;
                             if (lootPercentage <= contribution)
                             {
-                                shares[mapEventParty].Add(new(item, 1));
-                                lootPercentage = loot.SumQ(e => e.EquipmentElement.Value()) / lootValue;
-                                shuffledLoot.RemoveAt(index);
+                                shares[mapEventParty].Add(new(item.EquipmentElement, 1));
+                                lootPercentage = shares[mapEventParty].SumQ(e => e.EquipmentElement.Value() * e.Amount) / lootValue;
+                                if (--item.Amount == 0)
+                                    shuffledLoot.RemoveAt(index);
                             }
                         }
                         else
                         {
-                            shares.Add(mapEventParty, new List<ItemRosterElement> { new(item, 1) });
-                            lootPercentage = item.Value() / lootValue;
-                            shuffledLoot.RemoveAt(index);
+                            shares.Add(mapEventParty, new List<ItemRosterElement> { new(item.EquipmentElement, 1) });
+                            lootPercentage = item.EquipmentElement.Value() / lootValue;
+                            if (--item.Amount == 0)
+                                shuffledLoot.RemoveAt(index);
                         }
 
                         if (lootPercentage > contribution)
@@ -98,8 +99,9 @@ namespace GloriousTroops
                     for (var index = 0; index < shuffledLoot.Count; index++)
                     {
                         var item = shuffledLoot[index];
-                        shares[mapEventParty].Add(new(item, 1));
-                        shuffledLoot.RemoveAt(index);
+                        shares[mapEventParty].Add(new(item.EquipmentElement, 1));
+                        if (--item.Amount == 0)
+                            shuffledLoot.RemoveAt(index);
                         if (shuffledLoot.Count == 0)
                             break;
                     }
@@ -1258,7 +1260,8 @@ namespace GloriousTroops
             {
                 if (caravanLeader is null)
                 {
-                    var caravanCharacters = CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26); ;
+                    var caravanCharacters = CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26);
+                    ;
                     var troop = mobileParty.MemberRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString().StartsWith("Glorious"));
                     if (troop.Character is not null)
                     {
