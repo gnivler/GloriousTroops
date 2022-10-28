@@ -1,8 +1,9 @@
 using System;
 using MCM.Abstractions.Attributes.v2;
-using MCM.Abstractions.Settings.Base.Global;
+using MCM.Abstractions.Base.Global;
+using MCM.Common;
 using TaleWorlds.InputSystem;
-using MCM.Abstractions.Dropdown;
+
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 // ReSharper disable FieldCanBeMadeReadOnly.Local
@@ -29,7 +30,7 @@ namespace GloriousTroops
 
         // nice idea DasNeo, nice idea
         [SettingPropertyDropdown("Hotkey", HintText = "Select a hotkey to toggle the Glorious Troops UI.", Order = 0, RequireRestart = false)]
-        public DropdownDefault<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 0);
+        public Dropdown<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 0);
 
         [SettingPropertyBool("Only Bandits", HintText = "Regular lord parties' troops will not upgrade their equipment.", Order = 1, RequireRestart = false)]
         public bool OnlyBandits { get; set; } = false;
