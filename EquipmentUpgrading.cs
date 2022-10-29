@@ -103,7 +103,16 @@ namespace GloriousTroops
             if (!usableEquipment.Any())
                 return;
 
-            var troops = UpdateTroops(party);
+            // setup the list of troops in kill-based priority then add the remaining troops
+            List<TroopRosterElement> troops = new();
+            if (Globals.TroopKills.TryGetValue(party, out var roster))
+            {
+                var orderedTroopsGrouping = roster.Troops.GroupBy(e => e.StringId).OrderByDescending(e => e.Count());
+                foreach (var grouping in orderedTroopsGrouping.SelectQ(g => g.SelectQ(c => c)))
+                    troops.AddRange(grouping.Select(troop => new TroopRosterElement(troop) { Number = 1 }));
+            }
+
+            troops.AddRange(OrderTroopsByValue(party).Except(troops));
             if (!usableEquipment.Any())
                 return;
             LogBoth($"Loot pile {usableEquipment.Sum(i => i.Amount)} items:");
@@ -170,12 +179,13 @@ namespace GloriousTroops
             }
 
             LogBoth("=== Done Looting ===");
+            TroopKills.Remove(party);
             FightLog.Restart();
         }
 
         // collection is modified so re-sort
         // ReSharper disable once RedundantAssignment
-        private static List<TroopRosterElement> UpdateTroops(PartyBase party)
+        private static List<TroopRosterElement> OrderTroopsByValue(PartyBase party)
         {
             var rosterElements = party.MemberRoster.GetTroopRoster()
                 .OrderByDescending(e => e.Character.IsHero)
@@ -203,17 +213,21 @@ namespace GloriousTroops
                     return;
                 if (!EquipmentMap.TryGetValue(troop.StringId, out _))
                 {
-                    Troops.Add(troop);
-                    EquipmentMap.Add(troop.StringId, troop.Equipment);
-                    SkillsMap.Add(troop.StringId, GloriousTroopsBehavior.Skills(CharacterSkills(troop)));
+                    Globals.Troops.Add(troop);
+                    Globals.EquipmentMap.Add(troop.StringId, troop.Equipment);
+                    Globals.SkillsMap.Add(troop.StringId, GloriousTroopsBehavior.Skills(CharacterSkills(troop)));
+                    var x = party.MemberRoster.TotalManCount;
                     party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
                     if (party.MemberRoster.Contains(troop.OriginalCharacter))
+                    {
                         party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
+                        party.MemberRoster.RemoveZeroCounts();
+                    }
                 }
                 else
                 {
-                    EquipmentMap[troop.StringId] = troop.Equipment;
-                    SkillsMap[troop.StringId] = GloriousTroopsBehavior.Skills(CharacterSkills(troop));
+                    Globals.EquipmentMap[troop.StringId] = troop.Equipment;
+                    Globals.SkillsMap[troop.StringId] = GloriousTroopsBehavior.Skills(CharacterSkills(troop));
                 }
             }
             catch (Exception ex)

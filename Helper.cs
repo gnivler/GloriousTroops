@@ -58,6 +58,7 @@ namespace GloriousTroops
                 LootRecord.Clear();
                 EquipmentMap.Clear();
                 SkillsMap.Clear();
+                TroopKills.Clear();
                 RestoreAllOriginalTroops();
                 Troops.Clear();
                 MBInformationManager.AddQuickInformation(new TextObject("All original troops restored."));

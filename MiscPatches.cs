@@ -35,7 +35,26 @@ namespace GloriousTroops
 {
     public static class MiscPatches
     {
-        private static readonly FieldInfo MemberRosters = AccessTools.Field(typeof(PartyScreenLogic), nameof(PartyScreenLogic.MemberRosters));
+        [HarmonyPatch(typeof(MapEventParty), "OnTroopScoreHit")]
+        public class MapEventPartyOnTroopScoreHit
+        {
+            public static void Postfix(MapEventParty __instance, UniqueTroopDescriptor attackerTroopDesc, bool isFatal, bool isTeamKill, FlattenedTroopRoster ____roster)
+            {
+                if (isFatal && !isTeamKill)
+                {
+                    var party = __instance.Party;
+                    var troop = ____roster[attackerTroopDesc];
+                    if (TroopKills.TryGetValue(party, out _))
+                        Globals.TroopKills[party].Add(troop.Troop, 1);
+                    else
+                    {
+                        var roster = new FlattenedTroopRoster();
+                        roster.Add(troop.Troop, 1);
+                        Globals.TroopKills.Add(party, roster);
+                    }
+                }
+            }
+        }
 
         [HarmonyPatch(typeof(BattleCampaignBehavior), "CollectLoots")]
         public static class BattleCampaignBehaviorCollectLoots
@@ -1136,18 +1155,6 @@ namespace GloriousTroops
             }
         }
 
-        [HarmonyPatch(typeof(SaveableCampaignTypeDefiner), "DefineContainerDefinitions")]
-        public class SaveableCampaignTypeDefinerDefineContainerDefinitions
-        {
-            public static void Postfix(SaveableCampaignTypeDefiner __instance)
-            {
-                AccessTools.Method(typeof(CampaignBehaviorBase.SaveableCampaignBehaviorTypeDefiner),
-                    "ConstructContainerDefinition").Invoke(__instance, new object[] { typeof(Dictionary<string, Equipment>) });
-                AccessTools.Method(typeof(CampaignBehaviorBase.SaveableCampaignBehaviorTypeDefiner),
-                    "ConstructContainerDefinition").Invoke(__instance, new object[] { typeof(Dictionary<string, CharacterSkills>) });
-            }
-        }
-
         [HarmonyPatch(typeof(TroopRoster), "ClampXp")]
         public static class TroopRosterClampXp
         {
@@ -1253,6 +1260,7 @@ namespace GloriousTroops
             }
         }
 
+        // caravans pull straight COs, so we have to stop them pulling GTs
         [HarmonyPatch(typeof(CaravanPartyComponent), "InitializeCaravanOnCreation")]
         public class CaravanPartyComponentInitializeCaravanOnCreation
         {

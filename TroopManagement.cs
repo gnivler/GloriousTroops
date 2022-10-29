@@ -143,6 +143,7 @@ namespace GloriousTroops
                                 upgradeTarget = element;
                         }
 
+                    // BUG upgradeTarget.Character is coming out null sometimes?
                     var usableEquipment = new List<ItemRosterElement>();
                     for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
                     {
@@ -185,6 +186,9 @@ namespace GloriousTroops
                 {
                     //Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId}");
                     Helper.RemoveTracking(troop, __instance.Party.MemberRoster);
+                    if (!TroopKills.TryGetValue(__instance.Party, out _))
+                        return;
+                    TroopKills[__instance.Party].RemoveIf(e => e.Troop.StringId == troop.StringId);
                 }
                 else if (!__instance.Party.IsActive)
                     Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId} but not active party");
