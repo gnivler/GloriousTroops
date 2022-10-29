@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.CampaignSystem.Roster;
 using TaleWorlds.Core;
 using TaleWorlds.ModuleManager;
 
@@ -16,6 +17,7 @@ namespace GloriousTroops
         // object tracking
         internal static List<CharacterObject> Troops = new();
         internal static readonly Dictionary<PartyBase, List<EquipmentElement>> LootRecord = new();
+        internal static Dictionary<PartyBase, FlattenedTroopRoster> TroopKills = new();
         internal static Dictionary<string, Equipment> EquipmentMap = new();
         internal static Dictionary<string, CharacterSkills> SkillsMap = new();
 
