@@ -165,7 +165,7 @@ namespace GloriousTroops
                             || !troop.Character.Equipment.HasWeaponOfClass(WeaponClass.Musket)))
                         continue;
                     LogBoth($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, valued at {possibleUpgrade.EquipmentElement.Value()} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
-                    DoPossibleUpgrade(party, possibleUpgrade, ref troop, ref usableEquipment, out _);
+                    DoPossibleUpgrade(party, ref possibleUpgrade, ref troop, ref usableEquipment, out _);
                     // if all the troops were upgraded, bail out to the next troop
                     CharacterObject co;
                     // check if we've exhausted this troop type
@@ -239,7 +239,7 @@ namespace GloriousTroops
 
         internal static bool DoPossibleUpgrade(
             PartyBase party,
-            ItemRosterElement possibleUpgrade,
+            ref ItemRosterElement possibleUpgrade,
             ref TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment,
             out TroopRosterElement upgradedUnit)
@@ -274,7 +274,7 @@ namespace GloriousTroops
                         && !troopRosterElement.Character.Name.ToString().StartsWith("Glorious")
                     ? CreateCustomCharacter(ref troopRosterElement)
                     : troopRosterElement.Character;
-                Log.Debug?.Log($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
+                LogBoth($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
                 // assign the upgrade
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
                 MapUpgrade(party, troop);
@@ -305,13 +305,15 @@ namespace GloriousTroops
                     usableEquipment.Remove(possibleUpgrade);
                     break;
                 }
-            }
 
-            // only used for upgrading a unit during training
-            upgradedUnit = new TroopRosterElement(troop)
-            {
-                Number = 1
-            };
+                usableEquipment[usableEquipment.FindIndexQ(possibleUpgrade)] = possibleUpgrade;
+
+                // only used for upgrading a unit during training
+                upgradedUnit = new TroopRosterElement(troop)
+                {
+                    Number = 1
+                };
+            }
 
             return true;
         }
@@ -417,7 +419,7 @@ namespace GloriousTroops
 
             int ClampSkillLevel(SkillObject skill)
             {
-                return Math.Min(troop.GetSkillValue(skill) + Globals.Settings.SkillBuffAmount, 300);
+                return Math.Min(troop.GetSkillValue(skill) + 1, 300);
             }
         }
     }

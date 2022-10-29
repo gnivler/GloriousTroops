@@ -151,7 +151,7 @@ namespace GloriousTroops
                             continue;
                         var item = new ItemRosterElement(original.Character.Equipment[index], 1);
                         usableEquipment.Add(item);
-                        if (EquipmentUpgrading.DoPossibleUpgrade(party, item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit))
+                        if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit))
                             upgradeTarget = upgradedUnit;
                     }
                 }

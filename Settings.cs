@@ -50,9 +50,6 @@ namespace GloriousTroops
         [SettingPropertyInteger("Minimum Loot Value", 1000, 100_000, HintText = "Only items at least this valuable will be kept for loot.", Order = 6, RequireRestart = false)]
         public int MinLootValue { get; set; } = 1000;
 
-        [SettingPropertyInteger("Skill Buff Amount", 0, 100, HintText = "Single relevant skill goes up by this amount when an upgrade is obtained.", Order = 7, RequireRestart = false)]
-        public int SkillBuffAmount { get; set; } = 25;
-
         [SettingPropertyBool("Party Screen Changes", HintText = "Compact the Party Screen UI widgets to show multiples (or singles).  Requires restart.", Order = 8, RequireRestart = true)]
         public bool PartyScreenChanges { get; set; } = true;
 
