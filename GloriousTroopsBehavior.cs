@@ -69,6 +69,8 @@ namespace GloriousTroops
                 SkillsMap.Clear();
             if (!dataStore.SyncData("TroopKills", ref TroopKills))
                 SkillsMap.Clear();
+            if (!dataStore.SyncData("KillCounters", ref KillCounters))
+                SkillsMap.Clear();
             if (dataStore.IsLoading)
             {
                 var tempList = new List<CharacterObject>(Troops);

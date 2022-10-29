@@ -18,7 +18,7 @@ namespace GloriousTroops
         internal static List<CharacterObject> Troops = new();
         internal static readonly Dictionary<PartyBase, List<EquipmentElement>> LootRecord = new();
         internal static Dictionary<PartyBase, FlattenedTroopRoster> TroopKills = new();
-        internal static readonly Dictionary<string, int> KillCounters = new();
+        internal static Dictionary<string, int> KillCounters = new();
         internal static Dictionary<string, Equipment> EquipmentMap = new();
         internal static Dictionary<string, CharacterSkills> SkillsMap = new();
 
