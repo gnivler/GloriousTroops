@@ -43,9 +43,6 @@ public class SkillPanel : ViewModel
     private int individual;
     private SelectorVM<SelectorItemVM> troops;
     private MBBindingList<EncyclopediaSkillVM> skills = new();
-    private SkillObject skill;
-    private string skillId;
-    private int skillValue;
     private BasicTooltipViewModel hint;
     private string troopCount;
 
@@ -115,22 +112,29 @@ public class SkillPanel : ViewModel
 
     private void SetupCharacter(CharacterObject co)
     {
-        Character = new HeroViewModel();
-        Character.FillFrom(co);
-        BannerCodeText = Character.BannerCodeText;
-        CharStringId = Character.CharStringId;
-        var characterObject = MBObjectManager.Instance.GetObject<CharacterObject>(CharStringId);
-        EquipmentCode = Equipments(EquipmentRoster(characterObject))[0].CalculateEquipmentCode();
-        BodyProperties = Character.BodyProperties;
-        IsFemale = Character.IsFemale;
-        StanceIndex = Character.StanceIndex;
-        ArmorColor1 = Character.ArmorColor1;
-        ArmorColor2 = Character.ArmorColor2;
-        Race = Character.Race;
-        Character.RefreshValues();
-        RefreshSkills();
-        TroopCount = MakeTroopCount();
-        OnPropertyChanged(nameof(KillCount));
+        try
+        {
+            Character = new HeroViewModel();
+            Character.FillFrom(co);
+            BannerCodeText = Character.BannerCodeText;
+            CharStringId = Character.CharStringId;
+            var characterObject = MBObjectManager.Instance.GetObject<CharacterObject>(CharStringId);
+            EquipmentCode = Equipments(EquipmentRoster(characterObject))[0].CalculateEquipmentCode();
+            BodyProperties = Character.BodyProperties;
+            IsFemale = Character.IsFemale;
+            StanceIndex = Character.StanceIndex;
+            ArmorColor1 = Character.ArmorColor1;
+            ArmorColor2 = Character.ArmorColor2;
+            Race = Character.Race;
+            Character.RefreshValues();
+            RefreshSkills();
+            TroopCount = MakeTroopCount();
+            OnPropertyChanged(nameof(KillCount));
+        }
+        catch (Exception ex)
+        {
+            LogException(ex);
+        }
     }
 
     private void TroopChanged(SelectorVM<SelectorItemVM> selector)
@@ -253,34 +257,6 @@ public class SkillPanel : ViewModel
             if (value != hint)
             {
                 hint = value;
-                OnPropertyChangedWithValue(value);
-            }
-        }
-    }
-
-    [DataSourceProperty]
-    public int SkillValue
-    {
-        get => skillValue;
-        set
-        {
-            if (value != skillValue)
-            {
-                skillValue = value;
-                OnPropertyChangedWithValue(value);
-            }
-        }
-    }
-
-    [DataSourceProperty]
-    public string SkillId
-    {
-        get => skillId;
-        set
-        {
-            if (value != skillId)
-            {
-                skillId = value;
                 OnPropertyChangedWithValue(value);
             }
         }
