@@ -90,6 +90,12 @@ namespace GloriousTroops
                 // for older save compatibility
                 if (SkillsMap.TryGetValue(troop.StringId, out var skills))
                     Skills(EquipmentUpgrading.CharacterSkills(troop)) = skills;
+                else
+                {
+                    EquipmentUpgrading.CharacterSkills(troop) = new MBCharacterSkills();
+                    EquipmentUpgrading.Attributes(EquipmentUpgrading.CharacterSkills(troop).Skills) =
+                        new Dictionary<SkillObject, int>(EquipmentUpgrading.Attributes(EquipmentUpgrading.CharacterSkills(troop.OriginalCharacter).Skills));
+                }
                 var mbEquipmentRoster = new MBEquipmentRoster();
                 Equipments(mbEquipmentRoster) = new List<Equipment> { EquipmentMap[troop.StringId] };
                 EquipmentRoster(troop) = mbEquipmentRoster;
