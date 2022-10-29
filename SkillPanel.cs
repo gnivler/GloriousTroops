@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using SandBox.View.Map;
 using TaleWorlds.CampaignSystem;
@@ -69,7 +70,14 @@ public class SkillPanel : ViewModel
         Skills = new();
         troops = new(troopsIdsAndNames.Values, 0, TroopChanged);
         TroopChanged(troops);
-        layer.LoadMovie("SkillPanel", this);
+        try
+        {
+            layer.LoadMovie("SkillPanel", this);
+        }
+        catch (Exception ex)
+        {
+            LogException(ex);
+        }
     }
 
     public override void OnFinalize()
@@ -122,6 +130,7 @@ public class SkillPanel : ViewModel
         Character.RefreshValues();
         RefreshSkills();
         TroopCount = MakeTroopCount();
+        OnPropertyChanged(nameof(KillCount));
     }
 
     private void TroopChanged(SelectorVM<SelectorItemVM> selector)
@@ -288,6 +297,18 @@ public class SkillPanel : ViewModel
                 troopCount = value;
                 OnPropertyChangedWithValue(value);
             }
+        }
+    }
+
+    [DataSourceProperty]
+    public string KillCount
+    {
+        get
+        {
+            var co = MBObjectManager.Instance.GetObject<CharacterObject>(Character.CharStringId);
+            if (Globals.KillCounters.TryGetValue(co.StringId, out var kills))
+                return kills.ToString();
+            return "0";
         }
     }
 }

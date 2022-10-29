@@ -186,9 +186,10 @@ namespace GloriousTroops
                 {
                     //Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId}");
                     Helper.RemoveTracking(troop, __instance.Party.MemberRoster);
-                    if (!TroopKills.TryGetValue(__instance.Party, out _))
-                        return;
-                    TroopKills[__instance.Party].RemoveIf(e => e.Troop.StringId == troop.StringId);
+                    if (TroopKills.TryGetValue(__instance.Party, out _))
+                        TroopKills[__instance.Party].RemoveIf(e => e.Troop.StringId == troop.StringId);
+                    if (KillCounters.TryGetValue(troop.StringId, out _))
+                        KillCounters.Remove(troop.StringId);
                 }
                 else if (!__instance.Party.IsActive)
                     Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId} but not active party");
