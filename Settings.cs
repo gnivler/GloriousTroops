@@ -30,7 +30,7 @@ namespace GloriousTroops
 
         // nice idea DasNeo, nice idea
         [SettingPropertyDropdown("Hotkey", HintText = "Select a hotkey to toggle the Glorious Troops UI.", Order = 0, RequireRestart = false)]
-        public Dropdown<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 0);
+        public Dropdown<string> Hotkey { get; set; } = new(Enum.GetNames(typeof(InputKey)), 43 /* Z */);
 
         [SettingPropertyBool("Only Bandits", HintText = "Regular lord parties' troops will not upgrade their equipment.", Order = 1, RequireRestart = false)]
         public bool OnlyBandits { get; set; } = false;
