@@ -231,13 +231,6 @@ namespace GloriousTroops
                                         roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter.StringId), 1);
                                         Log.Debug?.Log($"!!!!! Restored original troop {troop.Character.OriginalCharacter} from {troop.Character.StringId} in {party.Name}.");
                                     }
-                                    else
-                                    {
-                                        party.MapEvent.FinalizeEvent();
-                                        Traverse.Create(party.MapEventSide).Field<MapEvent>("_mapEvent").Value = null;
-                                        roster.AddToCounts(CharacterObject.Find(troop.Character.OriginalCharacter.StringId), 1);
-                                        Log.Debug?.Log($"!!!!! Battle-Restored Glorious Troop {troop.Character.OriginalCharacter} in {party.Name}.");
-                                    }
                                 }
                             }
                         }
