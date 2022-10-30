@@ -743,8 +743,17 @@ namespace GloriousTroops
                                      && e.Character.Name.Equals(character.Name)
                                      && e.Xp >= upgradeCost).FirstOrDefault().Character
                                  ?? character;
-                        roster.AddToCounts(co, -1, woundedCount: -woundedCount);
-                        roster.AddToCounts(upgradeTarget, 1, woundedCount: woundedCount);
+                        var party = FindParties(co).First();
+                        var original = new TroopRosterElement(co) { Number = 1, WoundedNumber = woundedCount };
+                        var upgrade = new TroopRosterElement(upgradeTarget) { Number = 1, WoundedNumber = woundedCount };
+                        try
+                        {
+                            DoStripUpgrade(party, original, upgrade);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogException(ex);
+                        }
                     }
                 }
                 else
@@ -761,48 +770,88 @@ namespace GloriousTroops
             }
         }
 
+        // adapted from 1.0.0
         [HarmonyPatch(typeof(PartyVM), "UpgradeTroop")]
         public class PartyVMUpgradeTroop
         {
-            private static readonly MethodBase getElementCopy = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.GetElementCopyAtIndex));
-            private static readonly MethodBase getSimilarElementCopy = AccessTools.Method(typeof(PartyVMUpgradeTroop), nameof(GetSimilarElementCopy));
-            private static readonly MethodBase findIndex = AccessTools.Method(typeof(TroopRoster), nameof(TroopRoster.FindIndexOfTroop));
-            private static readonly MethodBase findSimilarIndex = AccessTools.Method(typeof(Helper), nameof(FindIndexOrSimilarIndex));
-            private static readonly MethodBase woundedFirst = AccessTools.Method(typeof(Helper), nameof(WoundedFirst));
-
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            public static bool Prefix(PartyVM __instance, PartyScreenLogic.PartyCommand command,
+                string ____fiveStackShortcutkeyText, string ____entireStackShortcutkeyText,
+                PartyCharacterVM ____currentCharacter)
             {
-                var codes = instructions.ToListQ();
-                var skipFirst = true;
-                for (var i = 0; i < codes.Count; i++)
+                try
                 {
-                    var code = codes[i];
-                    if (code.opcode == OpCodes.Callvirt && code.OperandIs(findIndex))
+                    var commandRoster = __instance.PartyScreenLogic.MemberRosters[(int)command.RosterSide];
+                    var indexOfTroop = FindIndexOrSimilarIndex(commandRoster, command.Character.UpgradeTargets[command.UpgradeTarget]);
+                    TroopRosterElement element = default;
+                    // training a troop that winds up Glorious from equipment, fails on the command.UpgradeTarget's name
+                    if (indexOfTroop == -1)
                     {
-                        if (skipFirst)
-                        {
-                            skipFirst = false;
-                            continue;
-                        }
-
-                        codes[i].opcode = OpCodes.Call;
-                        codes[i].operand = findSimilarIndex;
-                        codes.Insert(i, new(OpCodes.Ldarg_1));
-                        codes.Insert(i + 1, new(OpCodes.Call, woundedFirst));
+                        var searchName = $"Glorious {command.Character.UpgradeTargets[command.UpgradeTarget].Name}";
+                        element = commandRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString() == searchName);
+                        indexOfTroop = commandRoster.GetTroopRoster().IndexOf(element);
                     }
+
+                    var newCharacter = new PartyCharacterVM(__instance.PartyScreenLogic, ProcessCharacterLock, SetSelectedCharacter, OnTransferTroop,
+                        null, OnFocusCharacter, __instance, commandRoster, indexOfTroop, command.Type, command.RosterSide,
+                        __instance.PartyScreenLogic.IsTroopTransferable(command.Type, commandRoster.GetCharacterAtIndex(indexOfTroop), (int)command.RosterSide),
+                        ____fiveStackShortcutkeyText, ____entireStackShortcutkeyText);
+                    newCharacter.IsLocked = Traverse.Create(__instance).Method("IsTroopLocked", newCharacter.Troop, false).GetValue<bool>();
+                    MBBindingList<PartyCharacterVM> list = new();
+                    var args = new object[] { list, command.RosterSide, command.Type };
+                    AccessTools.Method(__instance.GetType(), "GetPartyCharacterVMList").Invoke(__instance, args);
+                    list = (MBBindingList<PartyCharacterVM>)args[0];
+                    if (list.Contains(newCharacter))
+                    {
+                        var partyCharacterVm = list.First(character => character.Equals(newCharacter));
+                        partyCharacterVm.Troop = newCharacter.Troop;
+                        partyCharacterVm.ThrowOnPropertyChanged();
+                    }
+                    else
+                    {
+                        list.Add(newCharacter);
+                        newCharacter.ThrowOnPropertyChanged();
+                    }
+
+                    var index = -1;
+                    var currentSideRoster = __instance.PartyScreenLogic.MemberRosters[(int)__instance.CurrentCharacter.Side];
+                    var currentSidePrisonerRoster = __instance.PartyScreenLogic.MemberRosters[(int)__instance.CurrentCharacter.Side];
+                    if (command.Type == PartyScreenLogic.TroopType.Member)
+                    {
+                        index = FindIndexOrSimilarIndex(currentSideRoster, __instance.CurrentCharacter.Character); //currentSideRoster.FindIndexOfTroop(__instance.CurrentCharacter.Character);
+
+                        if (index > 0)
+                            ____currentCharacter.Troop = GetSimilarElementCopy(currentSideRoster, index);
+                    }
+                    else if (command.Type == PartyScreenLogic.TroopType.Prisoner)
+                    {
+                        index = FindIndexOrSimilarIndex(currentSidePrisonerRoster, __instance.CurrentCharacter.Character); // currentSidePrisonerRoster.FindIndexOfTroop(__instance.CurrentCharacter.Character);
+                        if (index > 0)
+                            ____currentCharacter.Troop = GetSimilarElementCopy(currentSidePrisonerRoster, index);
+                    }
+
+                    if (index < 0)
+                    {
+                        __instance.UpgradePopUp.OnRanOutTroop(__instance.CurrentCharacter);
+                        list.Remove(__instance.CurrentCharacter);
+                        __instance.CurrentCharacter = newCharacter;
+                        MBInformationManager.HideInformations();
+                    }
+                    else
+                    {
+                        __instance.CurrentCharacter.InitializeUpgrades();
+                        __instance.CurrentCharacter.ThrowOnPropertyChanged();
+                    }
+
+                    __instance.CurrentCharacter?.UpdateTradeData();
+                    Game.Current.EventManager.TriggerEvent(new PlayerRequestUpgradeTroopEvent(command.Character, element.Character, command.TotalNumber));
+                    Traverse.Create(__instance).Method("RefreshTopInformation").GetValue();
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex);
                 }
 
-                for (var i = 0; i < codes.Count; i++)
-                {
-                    var code = codes[i];
-                    if (code.opcode == OpCodes.Callvirt && code.OperandIs(getElementCopy))
-                    {
-                        codes[i].opcode = OpCodes.Call;
-                        codes[i].operand = getSimilarElementCopy;
-                    }
-                }
-
-                return codes.AsEnumerable();
+                return false;
             }
 
             private static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)

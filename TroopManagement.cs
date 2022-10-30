@@ -135,6 +135,7 @@ namespace GloriousTroops
                 {
                     var original = __state.GetTroopRoster().Except(party.MemberRoster.GetTroopRoster()).FirstOrDefault();
                     var upgradeTarget = party.MemberRoster.GetTroopRoster().Except(__state.GetTroopRoster()).FirstOrDefault();
+                    // in the case that no new troop was created, find the one which has an increased count
                     if (upgradeTarget.Character is null)
                         for (var index = 0; index < party.MemberRoster.GetTroopRoster().Count; index++)
                         {
@@ -143,17 +144,7 @@ namespace GloriousTroops
                                 upgradeTarget = element;
                         }
 
-                    // BUG upgradeTarget.Character is coming out null sometimes?
-                    var usableEquipment = new List<ItemRosterElement>();
-                    for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
-                    {
-                        if (original.Character.Equipment[index].IsEmpty)
-                            continue;
-                        var item = new ItemRosterElement(original.Character.Equipment[index], 1);
-                        usableEquipment.Add(item);
-                        if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit))
-                            upgradeTarget = upgradedUnit;
-                    }
+                    Helper.DoStripUpgrade(party, original, upgradeTarget);
                 }
             }
         }

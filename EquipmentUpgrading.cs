@@ -299,6 +299,12 @@ namespace GloriousTroops
                     }
                 }
 
+                // only used for upgrading a unit during training
+                upgradedUnit = new TroopRosterElement(troop)
+                {
+                    Number = 1
+                };
+
                 // decrement and remove ItemRosterElements
                 if (--possibleUpgrade.Amount == 0)
                 {
@@ -307,13 +313,8 @@ namespace GloriousTroops
                 }
 
                 usableEquipment[usableEquipment.FindIndexQ(possibleUpgrade)] = possibleUpgrade;
-
-                // only used for upgrading a unit during training
-                upgradedUnit = new TroopRosterElement(troop)
-                {
-                    Number = 1
-                };
             }
+
 
             return true;
         }

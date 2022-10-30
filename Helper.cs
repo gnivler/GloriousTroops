@@ -319,6 +319,22 @@ namespace GloriousTroops
             }
         }
 
+        internal static void DoStripUpgrade(PartyBase party, TroopRosterElement original, TroopRosterElement upgradeTarget)
+        {
+            var usableEquipment = new List<ItemRosterElement>();
+            for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
+            {
+                if (original.Character.Equipment[index].IsEmpty)
+                    continue;
+                var item = new ItemRosterElement(original.Character.Equipment[index], 1);
+                usableEquipment.Add(item);
+                if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit))
+                {
+                    upgradeTarget = upgradedUnit;
+                }
+            }
+        }
+
         internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;
         internal static int GetSimilarElementXp(TroopRoster roster, int index) => roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
 
