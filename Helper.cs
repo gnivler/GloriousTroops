@@ -93,7 +93,7 @@ namespace GloriousTroops
             // OnPrisonerSold, DesertTroopsFromParty are passing live troops through here so avoid unregistering
             var index = troopRoster.FindIndexOfTroop(troop);
             // heroes shouldn't be removed from skill tracking
-            if (Troops.Contains(troop) && index == -1)
+            if (Troops.ContainsQ(troop) && index == -1)
             {
                 Troops.Remove(troop);
                 EquipmentMap.Remove(troop.StringId);

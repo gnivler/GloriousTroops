@@ -53,13 +53,11 @@ namespace GloriousTroops
                         Globals.TroopKills.Add(party, roster);
                     }
 
-                    if (Troops.ContainsQ(troop.Troop))
-                    {
-                        if (KillCounters.TryGetValue(troop.Troop.StringId, out _))
-                            KillCounters[troop.Troop.StringId]++;
-                        else
-                            KillCounters.Add(troop.Troop.StringId, 1);
-                    }
+                    // uses more memory but matching only player troops is expensive
+                    if (KillCounters.TryGetValue(troop.Troop.StringId, out _))
+                        KillCounters[troop.Troop.StringId]++;
+                    else
+                        KillCounters.Add(troop.Troop.StringId, 1);
                 }
             }
         }

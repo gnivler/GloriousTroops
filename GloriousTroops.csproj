@@ -62,6 +62,7 @@
   <ItemGroup>
     <Compile Remove="GloriousUnitTests\**" />
     <Compile Remove="GloriousUnitTests.butr\**" />
+    <Compile Remove="Upgrade.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Remove="GloriousUnitTests\**" />

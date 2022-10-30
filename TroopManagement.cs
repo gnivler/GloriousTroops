@@ -173,14 +173,15 @@ namespace GloriousTroops
                         LootRecord.Add(__instance.Party, new List<EquipmentElement> { item });
                 }
 
+                if (KillCounters.TryGetValue(troop.StringId, out _))
+                    KillCounters.Remove(troop.StringId);
+                if (TroopKills.TryGetValue(__instance.Party, out _))
+                    TroopKills[__instance.Party].RemoveIf(e => e.Troop.StringId == troop.StringId);
+
                 if (!troop.IsHero && __instance.Party.IsActive && Troops.ContainsQ(troop))
                 {
                     //Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId}");
                     Helper.RemoveTracking(troop, __instance.Party.MemberRoster);
-                    if (TroopKills.TryGetValue(__instance.Party, out _))
-                        TroopKills[__instance.Party].RemoveIf(e => e.Troop.StringId == troop.StringId);
-                    if (KillCounters.TryGetValue(troop.StringId, out _))
-                        KillCounters.Remove(troop.StringId);
                 }
                 else if (!__instance.Party.IsActive)
                     Log.Debug?.Log($"<<< killed {troop.Name} {troop.StringId} but not active party");
