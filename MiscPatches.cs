@@ -7,6 +7,8 @@ using System.Reflection.Emit;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
+using TaleWorlds.CampaignSystem.CharacterDevelopment;
+using TaleWorlds.CampaignSystem.Encounters;
 using TaleWorlds.CampaignSystem.GameComponents;
 using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
@@ -40,25 +42,26 @@ namespace GloriousTroops
         {
             public static void Postfix(MapEventParty __instance, UniqueTroopDescriptor attackerTroopDesc, bool isFatal, bool isTeamKill, FlattenedTroopRoster ____roster)
             {
+                if (!PlayerEncounter.IsActive)
+                    return;
                 if (isFatal && !isTeamKill)
                 {
                     var party = __instance.Party;
                     var troop = ____roster[attackerTroopDesc];
-                    if (TroopKills.TryGetValue(party, out _))
-                        Globals.TroopKills[party].Add(troop.Troop, 1);
-                    else
-                    {
-                        var roster = new FlattenedTroopRoster();
-                        roster.Add(troop.Troop, 1);
-                        Globals.TroopKills.Add(party, roster);
-                    }
-
-                    // uses more memory but matching only player troops is expensive
-                    if (KillCounters.TryGetValue(troop.Troop.StringId, out _))
-                        KillCounters[troop.Troop.StringId]++;
-                    else
-                        KillCounters.Add(troop.Troop.StringId, 1);
+                    RecordKill(party, troop);
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(SkillLevelingManager), "OnSimulationCombatKill")]
+        public class SkillLevelingManagerOnSimulationCombatKill
+        {
+            public static void Postfix(CharacterObject affectorCharacter, PartyBase affectorParty)
+            {
+                if (!PlayerEncounter.IsActive)
+                    return;
+                var troop = new FlattenedTroopRosterElement(affectorCharacter);
+                RecordKill(affectorParty, troop);
             }
         }
 
@@ -712,14 +715,17 @@ namespace GloriousTroops
                 var character = command.Character;
                 var upgradeTarget = character.UpgradeTargets[command.UpgradeTarget];
                 var roster = __instance.MemberRosters[(int)command.RosterSide];
+                var upgradeCost = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget);
                 // switch the command character for a character which has enough xp to level
                 // we wouldn't have landed in this method if at least ONE character didn't have enough xp
-                var maxAkaLevellingXp = roster.GetTroopRoster().WhereQ(e => e.Character != null && e.Character.Name.Equals(character.Name)).MaxQ(e => e.Xp);
-                character = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == maxAkaLevellingXp).Character;
+                var element = roster.GetElementCopyAtIndex(roster.FindIndexOfTroop(character));
+                if (element.Xp < upgradeCost)
+                    element = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == upgradeCost);
+                character = element.Character;
                 var indexOfTroop = roster.FindIndexOfTroop(character);
-                var upgradeCost = character.GetUpgradeXpCost(PartyBase.MainParty, command.UpgradeTarget);
                 var num = upgradeCost * command.TotalNumber;
                 roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - num);
+                element = roster.GetElementCopyAtIndex(roster.FindIndexOfTroop(character));
                 var usedHorses = (List<(EquipmentElement, int)>)null;
                 Traverse.Create(__instance).Method("SetPartyGoldChangeAmount", __instance.CurrentData.PartyGoldChangeAmount - character.GetUpgradeGoldCost(PartyBase.MainParty, command.UpgradeTarget) * command.TotalNumber).GetValue();
                 if (upgradeTarget.UpgradeRequiresItemFromCategory != null)
@@ -734,24 +740,37 @@ namespace GloriousTroops
 
                 if (character.Name.ToString().StartsWith("Glorious"))
                 {
-                    for (var i = 0; i < command.TotalNumber; i++)
+                    var upgrade = new TroopRosterElement(upgradeTarget) { Number = 1, WoundedNumber = woundedCount };
+                    var party = FindParties(character).First();
+                    for (var i = 0; i < command.TotalNumber; i++) // -1 because the first troop already comes in at 0xp
                     {
-                        var co = roster.GetTroopRoster().WhereQ(e =>
-                                     e.Character.StringId != character.StringId
-                                     && e.Character.Name.Equals(character.Name)
-                                     && e.Xp >= upgradeCost).FirstOrDefault().Character
-                                 ?? character;
-                        var party = FindParties(co).First();
-                        var original = new TroopRosterElement(co) { Number = 1, WoundedNumber = woundedCount };
-                        var upgrade = new TroopRosterElement(upgradeTarget) { Number = 1, WoundedNumber = woundedCount };
                         try
                         {
-                            DoStripUpgrade(party, original, upgrade);
+                            if (!DoStripUpgrade(party, element, upgrade))
+                            {
+                                // no equipment was kept so MapUpgrade never ran (no roster change)
+                                party.MemberRoster.RemoveTroop(element.Character);
+                                party.MemberRoster.AddToCounts(upgradeTarget, 1);
+                                var partyCharacterVM = PartyViewModel.MainPartyTroops.First(t => t.Character.Name.Equals(upgradeTarget.Name));
+                                indexOfTroop = roster.FindIndexOfTroop(upgradeTarget);
+                                var replacement = roster.GetElementCopyAtIndex(indexOfTroop);
+                                partyCharacterVM.Troop = replacement;
+                                partyCharacterVM.OnPropertyChanged(nameof(PartyCharacterVM.TroopNum));
+                            }
                         }
                         catch (Exception ex)
                         {
                             LogException(ex);
                         }
+
+                        if (i == command.TotalNumber - 1)
+                            break;
+                        element = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == upgradeCost);
+                        indexOfTroop = roster.FindIndexOfTroop(element.Character);
+                        if (indexOfTroop == -1)
+                            break;
+                        roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - upgradeCost);
+                        element = roster.GetElementCopyAtIndex(indexOfTroop);
                     }
                 }
                 else
@@ -779,16 +798,12 @@ namespace GloriousTroops
                 try
                 {
                     var commandRoster = __instance.PartyScreenLogic.MemberRosters[(int)command.RosterSide];
-                    var indexOfTroop = FindIndexOrSimilarIndex(commandRoster, command.Character.UpgradeTargets[command.UpgradeTarget]);
-                    TroopRosterElement element = default;
+                    var searchName = $"Glorious {command.Character.UpgradeTargets[command.UpgradeTarget].Name}";
+                    var element = commandRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString() == searchName);
+                    var indexOfTroop = commandRoster.GetTroopRoster().IndexOf(element);
                     // training a troop that winds up Glorious from equipment, fails on the command.UpgradeTarget's name
                     if (indexOfTroop == -1)
-                    {
-                        var searchName = $"Glorious {command.Character.UpgradeTargets[command.UpgradeTarget].Name}";
-                        element = commandRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString() == searchName);
-                        indexOfTroop = commandRoster.GetTroopRoster().IndexOf(element);
-                    }
-
+                        indexOfTroop = FindIndexOrSimilarIndex(commandRoster, command.Character.UpgradeTargets[command.UpgradeTarget]);
                     var newCharacter = new PartyCharacterVM(__instance.PartyScreenLogic, ProcessCharacterLock, SetSelectedCharacter, OnTransferTroop,
                         null, OnFocusCharacter, __instance, commandRoster, indexOfTroop, command.Type, command.RosterSide,
                         __instance.PartyScreenLogic.IsTroopTransferable(command.Type, commandRoster.GetCharacterAtIndex(indexOfTroop), (int)command.RosterSide),
@@ -868,7 +883,7 @@ namespace GloriousTroops
                     for (var i = 0; i < __instance.Character.UpgradeTargets.Length; i++)
                     {
                         var characterObject = __instance.Character.UpgradeTargets[i];
-                        var flag = false;
+                        var readyToUpgrade = false;
                         var flag2 = false;
                         var num = 0;
                         var level = characterObject.Level;
@@ -881,7 +896,7 @@ namespace GloriousTroops
                             flag4 = numOfCategoryItemPartyHas > 0;
                         var flag5 = Hero.MainHero.Gold + ____partyScreenLogic.CurrentData.PartyGoldChangeAmount >= upgradeGoldCost;
                         // edit 1
-                        flag = level >= __instance.Character.Level && __instance.Troops.GetTroopRoster().AnyQ(e => e.Xp >= __instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)) && !____partyVm.PartyScreenLogic.IsTroopUpgradesDisabled;
+                        readyToUpgrade = level >= __instance.Character.Level && __instance.Troops.GetTroopRoster().AnyQ(e => e.Xp >= __instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)) && !____partyVm.PartyScreenLogic.IsTroopUpgradesDisabled;
                         flag2 = !(flag4 && flag5);
                         var a = __instance.Troop.Number;
                         if (upgradeGoldCost > 0)
@@ -891,24 +906,22 @@ namespace GloriousTroops
                         // not so Glorious troops
                         int num2;
                         if (!__instance.Character.Name.ToString().StartsWith("Glorious"))
-                            num2 = flag ? (int)MathF.Clamp(MathF.Floor(__instance.Troop.Xp / (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
+                            num2 = readyToUpgrade ? (int)MathF.Clamp(MathF.Floor(__instance.Troop.Xp / (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number) : 0;
                         else
-                            num2 = flag
-                                ? (int)MathF.Clamp(__instance.Troops.GetTroopRoster().CountQ(e =>
-                                    e.Character.Name.Equals(__instance.Character.Name)
-                                    && e.Xp >= (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number)
+                            num2 = readyToUpgrade
+                                ? (int)MathF.Clamp(__instance.Troops.GetTroopRoster().CountQ(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp >= (float)__instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i)), 0f, __instance.Troop.Number)
                                 : 0;
                         num = MathF.Min(MathF.Min(a, b2), MathF.Min(num2, b));
                         if (__instance.Character.Culture.IsBandit)
                         {
                             flag2 = flag2 || !Campaign.Current.Models.PartyTroopUpgradeModel.CanPartyUpgradeTroopToTarget(PartyBase.MainParty, __instance.Character, characterObject);
-                            num = flag ? num : 0;
+                            num = readyToUpgrade ? num : 0;
                         }
 
                         // edit 3
-                        flag = num > 0;
+                        readyToUpgrade = num > 0;
                         var upgradeHint = CampaignUIHelper.GetUpgradeHint(i, numOfCategoryItemPartyHas, num, upgradeGoldCost, flag3, requiredPerk, __instance.Character, __instance.Troop, ____partyScreenLogic.CurrentData.PartyGoldChangeAmount, ____entireStackShortcutKeyText, ____fiveStackShortcutKeyText);
-                        __instance.Upgrades[i].Refresh(num, upgradeHint, flag, flag2, flag4, flag3);
+                        __instance.Upgrades[i].Refresh(num, upgradeHint, readyToUpgrade, flag2, flag4, flag3);
                         if (i == 0)
                         {
                             __instance.UpgradeCostText = upgradeGoldCost.ToString();

@@ -108,6 +108,23 @@ namespace GloriousTroops
             //Log.Debug?.Log("\n");
         }
 
+        internal static void RecordKill(PartyBase party, FlattenedTroopRosterElement troop)
+        {
+            if (TroopKills.TryGetValue(party, out _))
+                Globals.TroopKills[party].Add(troop.Troop, 1);
+            else
+            {
+                var roster = new FlattenedTroopRoster();
+                roster.Add(troop.Troop, 1);
+                Globals.TroopKills.Add(party, roster);
+            }
+
+            if (KillCounters.TryGetValue(troop.Troop.StringId, out _))
+                KillCounters[troop.Troop.StringId]++;
+            else
+                KillCounters.Add(troop.Troop.StringId, 1);
+        }
+
         // timed surprisingly fast ~0.75ms.  Not sure why this comes up with a different party than OwnerParty for a caravan
         // but it does.  So we have to search for it, until we can also find why OnTroopKilled is sending live troops to RemoveTracking
         internal static List<PartyBase> FindParties(CharacterObject troop)
@@ -319,8 +336,9 @@ namespace GloriousTroops
             }
         }
 
-        internal static void DoStripUpgrade(PartyBase party, TroopRosterElement original, TroopRosterElement upgradeTarget)
+        internal static bool DoStripUpgrade(PartyBase party, TroopRosterElement original, TroopRosterElement upgradeTarget)
         {
+            var wasUpgraded = false;
             var usableEquipment = new List<ItemRosterElement>();
             for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
             {
@@ -328,11 +346,14 @@ namespace GloriousTroops
                     continue;
                 var item = new ItemRosterElement(original.Character.Equipment[index], 1);
                 usableEquipment.Add(item);
-                if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit))
+                if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit, original))
                 {
                     upgradeTarget = upgradedUnit;
+                    wasUpgraded = true;
                 }
             }
+
+            return wasUpgraded;
         }
 
         internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;

@@ -204,7 +204,7 @@ namespace GloriousTroops
             }
         }
 
-        private static void MapUpgrade(PartyBase party, CharacterObject troop)
+        private static void MapUpgrade(PartyBase party, CharacterObject troop, TroopRosterElement original)
         {
             // Heroes keep their equipment without special tracking
             try
@@ -216,11 +216,11 @@ namespace GloriousTroops
                     Globals.Troops.Add(troop);
                     Globals.EquipmentMap.Add(troop.StringId, troop.Equipment);
                     Globals.SkillsMap.Add(troop.StringId, GloriousTroopsBehavior.Skills(CharacterSkills(troop)));
-                    var x = party.MemberRoster.TotalManCount;
                     party.MemberRoster.Add(new TroopRosterElement(troop) { Number = 1 });
-                    if (party.MemberRoster.Contains(troop.OriginalCharacter))
+                    var toRemove = original.Character?.OriginalCharacter ?? troop.OriginalCharacter;
+                    if (party.MemberRoster.Contains(toRemove))
                     {
-                        party.MemberRoster.RemoveTroop(troop.OriginalCharacter);
+                        party.MemberRoster.RemoveTroop(toRemove);
                         party.MemberRoster.RemoveZeroCounts();
                     }
                 }
@@ -242,7 +242,8 @@ namespace GloriousTroops
             ref ItemRosterElement possibleUpgrade,
             ref TroopRosterElement troopRosterElement,
             ref List<ItemRosterElement> usableEquipment,
-            out TroopRosterElement upgradedUnit)
+            out TroopRosterElement upgradedUnit,
+            TroopRosterElement original = default)
         {
             upgradedUnit = default;
             var targetSlot = GetSlotOfLeastValuableOfType(possibleUpgrade.EquipmentElement.Item.ItemType, troopRosterElement);
@@ -267,17 +268,16 @@ namespace GloriousTroops
                 && ItemSlots(troopRosterElement.Character.Equipment).AnyQ(e => e.Item?.ItemType is ItemObject.ItemTypeEnum.Shield))
                 return false;
             var iterations = troopRosterElement.Number;
-            CharacterObject troop = default;
             for (var i = 0; i < iterations; i++)
             {
-                troop = !troopRosterElement.Character.IsHero
-                        && !troopRosterElement.Character.Name.ToString().StartsWith("Glorious")
+                var troop = !troopRosterElement.Character.IsHero
+                            && !troopRosterElement.Character.Name.ToString().StartsWith("Glorious")
                     ? CreateCustomCharacter(ref troopRosterElement)
                     : troopRosterElement.Character;
                 LogBoth($"### Upgrading {troop.HeroObject?.Name ?? troop.Name} ({troop.StringId}): {replacedItem.Item?.Name.ToString() ?? "empty slot"} with {possibleUpgrade.EquipmentElement.Item.Name}");
                 // assign the upgrade
                 troop.Equipment[targetSlot] = possibleUpgrade.EquipmentElement;
-                MapUpgrade(party, troop);
+                MapUpgrade(party, troop, original);
                 // skill up the troop
                 SetSkillLevel(possibleUpgrade.EquipmentElement.Item, troop);
 
