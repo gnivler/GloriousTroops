@@ -166,17 +166,19 @@ namespace GloriousTroops
                         continue;
                     LogBoth($"{troop.Character.Name} of {troop.Character.Culture.Name} considering... {possibleUpgrade.EquipmentElement.Item?.Name}, valued at {possibleUpgrade.EquipmentElement.Value()} of culture {possibleUpgrade.EquipmentElement.Item.Culture?.Name}");
                     DoPossibleUpgrade(party, ref possibleUpgrade, ref troop, ref usableEquipment, out _);
-                    // if all the troops were upgraded, bail out to the next troop
-                    CharacterObject co;
-                    // check if we've exhausted this troop type
-                    if (troop.Character.Name.ToString().StartsWith("Glorious"))
-                        co = troop.Character.OriginalCharacter;
-                    else
-                        co = troop.Character;
-                    if (!troop.Character.IsHero && party.MemberRoster.FindIndexOfTroop(co) == -1)
-                        break;
                 }
+
+                // if all the troops were upgraded, bail out to the next troop  
+                CharacterObject co;
+                // check if we've exhausted this troop type
+                if (troop.Character.Name.ToString().StartsWith("Glorious"))
+                    co = troop.Character.OriginalCharacter;
+                else
+                    co = troop.Character;
+                if (!troop.Character.IsHero && party.MemberRoster.FindIndexOfTroop(co) == -1)
+                    break;
             }
+
 
             LogBoth("=== Done Looting ===");
             TroopKills.Remove(party);
