@@ -156,8 +156,30 @@ namespace GloriousTroops
             var allGloriousTroops = MBObjectManager.Instance.GetObjectTypeList<CharacterObject>().WhereQ(c => c is not null && c.Name.ToString().StartsWith("Glorious")).ToListQ();
             var allRosters = MobileParty.All.SelectQ(m => m.MemberRoster).Concat(MobileParty.All.SelectQ(m => m.PrisonRoster)
                 .Concat(Settlement.All.SelectQ(s => s.Party.MemberRoster).Concat(Settlement.All.SelectQ(s => s.Party.PrisonRoster)))).ToListQ();
-            var enumeratedGloriousTroops = allRosters.SelectMany(r => r.ToFlattenedRoster().Troops).WhereQ(c => c.Name.ToString().StartsWith("Glorious")).ToListQ();
+            var enumeratedGloriousTroops = allRosters.SelectMany(r => r.ToFlattenedRoster().Troops).WhereQ(c => c.Name == null || c.Name.ToString().StartsWith("Glorious")).ToListQ();
             orphaned = allGloriousTroops.Except(Globals.Troops).ToListQ();
+            var incomplete = enumeratedGloriousTroops.WhereQ(c => c.Name == null).ToListQ();
+            for (var i = 0; i < incomplete.Count; i++)
+            {
+                var bugger = incomplete[i];
+                for (var index = 0; index < allRosters.Count; index++)
+                {
+                    if (incomplete.Count == 0)
+                        break;
+                    var roster = allRosters[index];
+                    if (!roster.GetTroopRoster().AnyQ(e => e.Character == bugger))
+                        continue;
+                    foreach (var troop in roster.ToFlattenedRoster())
+                        if (troop.Troop == bugger)
+                        {
+                            roster.RemoveTroop(bugger);
+                            incomplete.Remove(bugger);
+                            break;
+                        }
+                }
+            }
+
+
             var reallyOrphaned = enumeratedGloriousTroops.Except(Troops).ToListQ();
             var headless = Troops.Except(allGloriousTroops).ToListQ();
             foreach (var troop in orphaned)
@@ -175,7 +197,7 @@ namespace GloriousTroops
             Log.Debug?.Log($"Found {reallyOrphaned.Count} actually orphaned troops out of {allRosters.SumQ(r => r.TotalRegulars)}");
             Log.Debug?.Log($"Found {headless.Count} headless troops out of {allGloriousTroops.CountQ()}");
 
-            if (prune && orphaned.Concat(reallyOrphaned).ToListQ() is var toPrune && toPrune.Any())
+            if (prune && orphaned.Concat(reallyOrphaned).Concat(incomplete).ToListQ() is var toPrune && toPrune.Any())
             {
                 Log.Debug?.Log($"Pruning {toPrune.Count} orphaned troops");
                 for (var index = 0; index < allRosters.Count; index++)
@@ -185,6 +207,7 @@ namespace GloriousTroops
                     {
                         if (toPrune.ContainsQ(troop.Troop))
                         {
+                            // bug OwnerParty isn't the same as party with the troop, ergo bad comparison
                             var ownerParty = OwnerParty(roster);
                             roster.RemoveTroop(troop.Troop);
                             if (ownerParty.MapEvent is null)

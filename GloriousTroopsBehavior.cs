@@ -78,7 +78,15 @@ namespace GloriousTroops
                 foreach (var troop in tempList)
                     RehydrateCharacterObject(troop);
                 Log.Debug?.Log($"Rehydrated {tempList.Count} troops");
-                OnDailyTick();
+                try
+                {
+                    CheckTracking(out _, true);
+                    OnDailyTick();
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex);
+                }
             }
         }
 
@@ -98,6 +106,7 @@ namespace GloriousTroops
                     EquipmentUpgrading.Attributes(EquipmentUpgrading.CharacterSkills(troop).Skills) =
                         new Dictionary<SkillObject, int>(EquipmentUpgrading.Attributes(EquipmentUpgrading.CharacterSkills(troop.OriginalCharacter).Skills));
                 }
+
                 var mbEquipmentRoster = new MBEquipmentRoster();
                 Equipments(mbEquipmentRoster) = new List<Equipment> { EquipmentMap[troop.StringId] };
                 EquipmentRoster(troop) = mbEquipmentRoster;
