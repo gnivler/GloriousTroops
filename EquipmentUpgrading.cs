@@ -422,7 +422,7 @@ namespace GloriousTroops
 
             int ClampSkillLevel(SkillObject skill)
             {
-                return Math.Min(troop.GetSkillValue(skill) + 1, 300);
+                return Math.Min(troop.GetSkillValue(skill) + 2, 300);
             }
         }
     }
