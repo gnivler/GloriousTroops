@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using HarmonyLib;
 using SandBox.GauntletUI;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.GameMenus;
-using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Party.PartyComponents;
 using TaleWorlds.CampaignSystem.Roster;
@@ -172,6 +170,7 @@ namespace GloriousTroops
                     foreach (var troop in roster.ToFlattenedRoster())
                         if (troop.Troop == bugger)
                         {
+                            Log.Debug?.Log($"Removing incomplete troop");
                             roster.RemoveTroop(bugger);
                             incomplete.Remove(bugger);
                             break;
@@ -359,7 +358,7 @@ namespace GloriousTroops
             }
         }
 
-        internal static bool DoStripUpgrade(PartyBase party, TroopRosterElement original, TroopRosterElement upgradeTarget)
+        internal static bool DoStripUpgrade(PartyBase party, TroopRosterElement original, ref TroopRosterElement upgradeTarget)
         {
             var wasUpgraded = false;
             var usableEquipment = new List<ItemRosterElement>();
@@ -369,9 +368,9 @@ namespace GloriousTroops
                     continue;
                 var item = new ItemRosterElement(original.Character.Equipment[index], 1);
                 usableEquipment.Add(item);
-                if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, out var upgradedUnit, original))
+                if (EquipmentUpgrading.DoPossibleUpgrade(party, ref item, ref upgradeTarget, ref usableEquipment, original, out var upgradedUnit))
                 {
-                    upgradeTarget = upgradedUnit;
+                    upgradeTarget = new TroopRosterElement(upgradedUnit) { Number = 1 };
                     wasUpgraded = true;
                 }
             }
@@ -379,6 +378,12 @@ namespace GloriousTroops
             return wasUpgraded;
         }
 
+        
+        internal static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)
+        {
+            return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
+        }
+        
         internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;
         internal static int GetSimilarElementXp(TroopRoster roster, int index) => roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
 

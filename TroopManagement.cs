@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -144,7 +142,7 @@ namespace GloriousTroops
                                 upgradeTarget = element;
                         }
 
-                    Helper.DoStripUpgrade(party, original, upgradeTarget);
+                    Helper.DoStripUpgrade(party, original, ref upgradeTarget);
                 }
             }
         }

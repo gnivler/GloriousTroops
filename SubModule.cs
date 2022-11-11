@@ -5,9 +5,11 @@ using HarmonyLib;
 using SandBox.GauntletUI;
 using SandBox.View.Map;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
 using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
+using TaleWorlds.LinQuick;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.ScreenSystem;
 
@@ -146,6 +148,12 @@ namespace GloriousTroops
 
             if (MEOWMEOW && Input.IsKeyPressed(InputKey.F2))
             {
+                var q = MobileParty.MainParty.MemberRoster.GetTroopRoster().WhereQ(c => c.Character.Name.ToString() == "Glorious Aserai Recruit").ToListQ();
+                for (var index = 0; index < q.Count; index++)
+                {
+                    var recruit = q[index];
+                    MobileParty.MainParty.MemberRoster.AddXpToTroop(20000, recruit.Character);
+                }
             }
 
             var superKey = Campaign.Current != null

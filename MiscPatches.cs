@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
@@ -22,7 +21,6 @@ using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
 using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade.ViewModelCollection.Scoreboard;
-using TaleWorlds.ObjectSystem;
 using static GloriousTroops.Globals;
 using static GloriousTroops.Helper;
 using Debug = TaleWorlds.Library.Debug;
@@ -740,50 +738,55 @@ namespace GloriousTroops
 
                 if (character.Name.ToString().StartsWith("Glorious"))
                 {
-                    var upgrade = new TroopRosterElement(upgradeTarget) { Number = 1, WoundedNumber = woundedCount };
                     var party = FindParties(character).First();
                     for (var i = 0; i < command.TotalNumber; i++) // -1 because the first troop already comes in at 0xp
                     {
                         try
                         {
-                            if (!DoStripUpgrade(party, element, upgrade))
+                            var upgradeElement = new TroopRosterElement(upgradeTarget) { Number = 1, WoundedNumber = woundedCount };
+                            if (!DoStripUpgrade(party, element, ref upgradeElement))
                             {
                                 // no equipment was kept so MapUpgrade never ran (no roster change)
                                 party.MemberRoster.RemoveTroop(element.Character);
                                 party.MemberRoster.AddToCounts(upgradeTarget, 1);
-                                var partyCharacterVM = PartyViewModel.MainPartyTroops.First(t => t.Character.Name.Equals(upgradeTarget.Name));
-                                indexOfTroop = roster.FindIndexOfTroop(upgradeTarget);
-                                var replacement = roster.GetElementCopyAtIndex(indexOfTroop);
-                                partyCharacterVM.Troop = replacement;
-                                partyCharacterVM.OnPropertyChanged(nameof(PartyCharacterVM.TroopNum));
                             }
+
+                            indexOfTroop = roster.FindIndexOfTroop(upgradeElement.Character);
+                            roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - num);
+                            RecordAndRefresh();
+                            character = character.FindSimilarCharacterWithXpNotAtIndex(roster, indexOfTroop, upgradeCost);
+                            element = roster.GetElementCopyAtIndex(indexOfTroop);
+
+                            // -1 because the first troop already comes in at 0xp
+                            if (i == command.TotalNumber - 1)
+                                break;
+                            element = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == upgradeCost);
+                            indexOfTroop = roster.FindIndexOfTroop(element.Character);
+                            if (indexOfTroop == -1)
+                                break;
+                            roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - upgradeCost);
                         }
                         catch (Exception ex)
                         {
                             LogException(ex);
                         }
-
-                        if (i == command.TotalNumber - 1)
-                            break;
-                        element = roster.GetTroopRoster().FirstOrDefaultQ(e => e.Character != null && e.Character.Name.Equals(character.Name) && e.Xp == upgradeCost);
-                        indexOfTroop = roster.FindIndexOfTroop(element.Character);
-                        if (indexOfTroop == -1)
-                            break;
-                        roster.SetElementXp(indexOfTroop, roster.GetElementXp(indexOfTroop) - upgradeCost);
-                        element = roster.GetElementCopyAtIndex(indexOfTroop);
                     }
                 }
                 else
                 {
                     roster.AddToCounts(character, -command.TotalNumber, woundedCount: -woundedCount);
                     roster.AddToCounts(upgradeTarget, command.TotalNumber, woundedCount: woundedCount);
+                    RecordAndRefresh();
                 }
 
-                Traverse.Create(__instance).Method("AddUpgradeToHistory", character, upgradeTarget, command.TotalNumber).GetValue();
-                Traverse.Create(__instance).Method("AddUsedHorsesToHistory", usedHorses).GetValue();
-                var updateDelegate = __instance.UpdateDelegate;
-                updateDelegate?.Invoke(command);
                 return false;
+
+                void RecordAndRefresh()
+                {
+                    Traverse.Create(__instance).Method("AddUpgradeToHistory", character, upgradeTarget, command.TotalNumber).GetValue();
+                    Traverse.Create(__instance).Method("AddUsedHorsesToHistory", usedHorses).GetValue();
+                    __instance.UpdateDelegate?.Invoke(command);
+                }
             }
         }
 
@@ -866,11 +869,6 @@ namespace GloriousTroops
 
                 return false;
             }
-
-            private static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)
-            {
-                return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
-            }
         }
 
         [HarmonyPatch(typeof(PartyCharacterVM), "InitializeUpgrades")]
@@ -930,7 +928,7 @@ namespace GloriousTroops
                             __instance.MaxXP = __instance.Character.GetUpgradeXpCost(PartyBase.MainParty, i);
                             // edit 4
                             var mostXpOfAnyTroop = __instance.Troops.GetTroopRoster().WhereQ(e => e.Character.Name.Equals(__instance.Character.Name)).MaxQ(e => e.Xp);
-                            var troopWithMostXp = __instance.Troops.GetTroopRoster().First(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp == mostXpOfAnyTroop);
+                            var troopWithMostXp = __instance.Troops.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.Equals(__instance.Character.Name) && e.Xp == mostXpOfAnyTroop);
                             __instance.CurrentXP = troopWithMostXp.Xp >= __instance.MaxXP ? __instance.MaxXP : troopWithMostXp.Xp % __instance.MaxXP;
                         }
                     }
