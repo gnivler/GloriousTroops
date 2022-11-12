@@ -106,7 +106,7 @@ namespace GloriousTroops
 
             // setup the list of troops in kill-based priority then add the remaining troops
             List<TroopRosterElement> troops = new();
-            if (Globals.TroopKills.TryGetValue(party, out var roster))
+            if (TroopKills.TryGetValue(party, out var roster))
             {
                 var orderedTroopsGrouping = roster.Troops.GroupBy(e => e.StringId).OrderByDescending(e => e.Count());
                 foreach (var grouping in orderedTroopsGrouping.SelectQ(g => g.SelectQ(c => c)))
@@ -114,6 +114,9 @@ namespace GloriousTroops
             }
 
             troops.AddRange(OrderTroopsByValue(party).Except(troops));
+            if (Globals.Settings?.OnlyBandits ?? false)
+                troops.RemoveAll(e => e.Character.Occupation is not Occupation.Bandit);
+            troops.RemoveAll(e => e.Character.StringId.EndsWith("borrowed_troop"));
             if (!usableEquipment.Any())
                 return;
             LogBoth($"Loot pile {usableEquipment.Sum(i => i.Amount)} items:");
@@ -186,16 +189,12 @@ namespace GloriousTroops
             FightLog.Restart();
         }
 
-        // collection is modified so re-sort
-        // ReSharper disable once RedundantAssignment
         private static List<TroopRosterElement> OrderTroopsByValue(PartyBase party)
         {
             var rosterElements = party.MemberRoster.GetTroopRoster()
                 .OrderByDescending(e => e.Character.IsHero)
                 .ThenByDescending(e => e.Character.Level)
                 .ThenByDescending(SumValue).ToListQ();
-            if (Globals.Settings?.OnlyBandits ?? false)
-                rosterElements.RemoveAll(e => e.Character.Occupation is not Occupation.Bandit);
             return rosterElements;
 
             int SumValue(TroopRosterElement element)
