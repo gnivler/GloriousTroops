@@ -178,7 +178,6 @@ namespace GloriousTroops
                 }
             }
 
-
             var reallyOrphaned = enumeratedGloriousTroops.Except(Troops).ToListQ();
             var headless = Troops.Except(allGloriousTroops).ToListQ();
             foreach (var troop in orphaned)
@@ -239,6 +238,31 @@ namespace GloriousTroops
                 var party = Settlement.All.SelectQ(s => s.Party).ToListQ()[index2];
                 IterateParties(party);
             }
+
+            try
+            {
+                foreach (var issue in Campaign.Current.IssueManager.Issues)
+                foreach (var troop in issue.Value.AlternativeSolutionSentTroops.ToFlattenedRoster())
+                {
+                    if (troop.Troop.IsHero)
+                        continue;
+                    if (Troops.ContainsQ(troop.Troop))
+                        RemoveTracking(troop.Troop, issue.Value.AlternativeSolutionSentTroops);
+                    issue.Value.AlternativeSolutionSentTroops.RemoveTroop(troop.Troop);
+                    if (troop.Troop.Name is null)
+                        Log.Debug?.Log($"Removing incomplete troop from issue {issue.Value.Title}");
+                    else if (troop.Troop.Name.ToString().StartsWith("Glorious"))
+                    {
+                        issue.Value.AlternativeSolutionSentTroops.AddToCounts(CharacterObject.Find(troop.Troop.OriginalCharacter.StringId), 1);
+                        Log.Debug?.Log($"!!!!! Restored original troop {troop.Troop.OriginalCharacter} from {troop.Troop.StringId} in issue {issue.Value.Title}.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogException(ex);
+            }
+
 
             void IterateParties(PartyBase party)
             {
@@ -378,12 +402,11 @@ namespace GloriousTroops
             return wasUpgraded;
         }
 
-        
         internal static TroopRosterElement GetSimilarElementCopy(TroopRoster roster, int index)
         {
             return roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault();
         }
-        
+
         internal static int WoundedFirst(PartyScreenLogic.PartyCommand command) => command.WoundedNumber > 0 ? 1 : 0;
         internal static int GetSimilarElementXp(TroopRoster roster, int index) => roster.GetElementCopyAtIndex(index).GetNewAggregateTroopRosterElement(roster).GetValueOrDefault().Xp;
 
