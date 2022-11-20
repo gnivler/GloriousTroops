@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using HarmonyLib;
 using SandBox.GauntletUI;
@@ -384,6 +385,13 @@ namespace GloriousTroops
 
         internal static bool DoStripUpgrade(PartyBase party, TroopRosterElement original, ref TroopRosterElement upgradeTarget)
         {
+            if (original.Character?.Equipment is null)
+            {
+                LogException(new InvalidOperationException("original.Character?.Equipment is null at DoStripUpgrade"));
+                Debugger.Break();
+                return false;
+            }
+
             var wasUpgraded = false;
             var usableEquipment = new List<ItemRosterElement>();
             for (var index = 0; index < Equipment.EquipmentSlotLength; index++)
