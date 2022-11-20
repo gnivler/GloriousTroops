@@ -281,9 +281,13 @@ public class SkillPanel : ViewModel
     {
         get
         {
-            var co = MBObjectManager.Instance.GetObject<CharacterObject>(Character.CharStringId);
-            if (Globals.KillCounters.TryGetValue(co.StringId, out var kills))
-                return kills.ToString();
+            if (Character is not null)
+            {
+                var co = MBObjectManager.Instance.GetObject<CharacterObject>(Character.CharStringId);
+                if (Globals.KillCounters.TryGetValue(co.StringId, out var kills))
+                    return kills.ToString();
+            }
+
             return "0";
         }
     }

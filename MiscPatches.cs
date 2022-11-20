@@ -954,8 +954,7 @@ namespace GloriousTroops
                 return false;
             }
         }
-
-
+        
         // modified assembly copy 1.8.1
         [HarmonyPatch(typeof(PartyScreenLogic), "TransferTroop")]
         public class PartyScreenLogicTransferTroop
@@ -1309,11 +1308,7 @@ namespace GloriousTroops
 
                 return true;
             }
-        }
 
-        [HarmonyPatch(typeof(BasicCharacterObject), "GetSkillValue")]
-        public class CharacterObjectGetSkillValue
-        {
             public static Exception Finalizer(BasicCharacterObject __instance, SkillObject skill, Exception __exception)
             {
                 if (__exception is not null)
@@ -1335,7 +1330,6 @@ namespace GloriousTroops
                 if (caravanLeader is null)
                 {
                     var caravanCharacters = CharacterObject.All.WhereQ(c => c.Occupation == Occupation.CaravanGuard && c.IsInfantry && c.Level == 26);
-                    ;
                     var troop = mobileParty.MemberRoster.GetTroopRoster().FirstOrDefaultQ(e => e.Character.Name.ToString().StartsWith("Glorious"));
                     if (troop.Character is not null)
                     {

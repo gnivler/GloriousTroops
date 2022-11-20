@@ -85,25 +85,26 @@ namespace GloriousTroops
 
         internal static void RemoveTracking(CharacterObject troop, TroopRoster troopRoster)
         {
-            if (!troop.Name.ToString().StartsWith("Glorious"))
-                return;
-
-            // OnPrisonerSold, DesertTroopsFromParty are passing live troops through here so avoid unregistering
-            var index = troopRoster.FindIndexOfTroop(troop);
-            // heroes shouldn't be removed from skill tracking
-            if (Troops.ContainsQ(troop) && index == -1)
+            if (troop.Name == null || troop.Name.ToString().StartsWith("Glorious"))
             {
-                Troops.Remove(troop);
-                EquipmentMap.Remove(troop.StringId);
-                SkillsMap.Remove(troop.StringId);
-                MBObjectManager.Instance.UnregisterObject(troop);
-                EquipmentUpgrading.CharacterSkills(troop) = null;
-                // Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
-                // Log.Debug?.Log(new StackTrace());
-            }
+                // OnPrisonerSold, DesertTroopsFromParty are passing live troops through here so avoid unregistering
+                var index = troopRoster.FindIndexOfTroop(troop);
+                // heroes shouldn't be removed from skill tracking
+                if (Troops.ContainsQ(troop) && index == -1)
+                {
+                    Troops.Remove(troop);
+                    EquipmentMap.Remove(troop.StringId);
+                    SkillsMap.Remove(troop.StringId);
+                    MBObjectManager.Instance.UnregisterObject(troop);
+                    EquipmentUpgrading.CharacterSkills(troop) = null;
 
-            //new StackTrace().GetFrames()?.Skip(1).Take(3).Do(f => Log.Debug?.Log(f.GetMethod().Name));
-            //Log.Debug?.Log("\n");
+                    // Log.Debug?.Log($"<<< Removed tracking {troop.Name} {troop.StringId}");
+                    // Log.Debug?.Log(new StackTrace());
+                }
+
+                //new StackTrace().GetFrames()?.Skip(1).Take(3).Do(f => Log.Debug?.Log(f.GetMethod().Name));
+                //Log.Debug?.Log("\n");
+            }
         }
 
         internal static void RecordKill(PartyBase party, FlattenedTroopRosterElement troop)
@@ -263,11 +264,10 @@ namespace GloriousTroops
                 LogException(ex);
             }
 
-
             void IterateParties(PartyBase party)
             {
                 var rosters = new[] { party.PrisonRoster, party.MemberRoster };
-                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character.Name.ToString().StartsWith("Glorious"))))
+                while (rosters.AnyQ(r => r.GetTroopRoster().AnyQ(t => t.Character?.Name == null || t.Character.Name.ToString().StartsWith("Glorious"))))
                 {
                     try
                     {
@@ -276,7 +276,7 @@ namespace GloriousTroops
                             for (var index2 = 0; index2 < roster.GetTroopRoster().CountQ(); index2++)
                             {
                                 var troop = roster.GetTroopRoster()[index2];
-                                if (troop.Character.Name.ToString().StartsWith("Glorious"))
+                                if (troop.Character?.Name == null || troop.Character.Name.ToString().StartsWith("Glorious"))
                                 {
                                     RemoveTracking(troop.Character, roster);
                                     try
